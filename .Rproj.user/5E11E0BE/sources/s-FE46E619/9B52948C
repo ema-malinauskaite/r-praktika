@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1578919489517.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3789573371",
+    "id" : "9B52948C",
+    "lastKnownWriteTime" : 1578871119,
+    "last_content_update" : 1578919495170,
+    "path" : "~/Desktop/praktika/r-praktika/kontaktu_sumos.Rmd",
+    "project_path" : "kontaktu_sumos.Rmd",
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

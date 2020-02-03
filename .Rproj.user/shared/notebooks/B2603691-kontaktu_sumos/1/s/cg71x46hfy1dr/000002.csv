@@ -1,0 +1,7 @@
+"0","kontaktu_sumos <- lizocimo_kontaktai %>% "
+"0","  group_by(ar_1) %>% "
+"0","  mutate(kontakto_tipas = paste(ar_1, ar_2)) %>% "
+"0","  count(kontakto_tipas) %>% "
+"0","  rename(suma = n)"
+"0",""
+"0","head(kontaktu_sumos)"

@@ -1,0 +1,5 @@
+"0","lizocimo_kontaktai <- data.table::fread(""./lizocimai/102L.pdb1.contacts.iterresue.table"")"
+"2","Registered S3 method overwritten by 'data.table':
+  method           from
+  print.data.table     
+"

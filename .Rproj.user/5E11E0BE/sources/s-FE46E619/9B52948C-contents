@@ -1,0 +1,103 @@
+---
+title: "lizocimai-bandymas"
+author: "Ema Malinauskaite"
+date: "1/12/2020"
+output: html_document
+---
+
+```{r}
+library("dplyr")
+library("ggplot2")
+```
+
+Duomenu ikelimas:
+```{r}
+lizocimo_kontaktai <- data.table::fread("./lizocimai/102L.pdb1.contacts.iterresue.table")
+```
+
+Naudojamu kintamuju pervadinimas:
+```{r}
+lizocimo_kontaktai <- lizocimo_kontaktai %>%
+  rename(
+    ar_1 = V6,
+    ar_2 = V13
+  )
+```
+
+```{r}
+lizocimo_kontaktai <- lizocimo_kontaktai %>%
+ mutate_if(is.character, forcats::as_factor)
+```
+
+```{r}
+head(lizocimo_kontaktai) 
+```
+
+# Su vandeniu
+Skaiciuojami kontaktai, kai vienas is kontaktu tipu yra kontaktas su vandeniu.
+
+## Kontaktu sumos 
+Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingais kontaktais)
+```{r}
+kontaktu_sumos <- lizocimo_kontaktai %>% 
+  group_by(ar_1) %>% 
+  mutate(kontakto_tipas = paste(ar_1, ar_2)) %>% 
+  count(kontakto_tipas) %>% 
+  rename(suma = n)
+
+head(kontaktu_sumos)
+```
+
+## Kontaktu sumos pagal aminorugsties tipa
+Kontaktai susumuojami pagal tai, kuri aminorugstis sudaro kontakta, nekreipiant demesio i tai, su kuo sudaro.
+```{r}
+sumu_suma <- kontaktu_sumos %>%  
+  group_by(ar_1) %>% 
+  summarise(bendra_suma = sum(suma))
+
+sumu_suma
+
+```
+
+## Stulpeline diagrama
+```{r}
+ggplot(sumu_suma) +
+ aes(x = ar_1, weight = `bendra_suma`) +
+ geom_bar()
+```
+
+# Be vandens
+Is kontaktu lenteles pasalinamos visos eilutes kuriose yra kontaktas su vandens molekule
+## Kontaktu sumos
+Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingais kontaktais).
+```{r}
+lizocimo_kontaktai_be <- lizocimo_kontaktai %>%
+  dplyr::filter(ar_2 != ".")
+
+kontaktu_sumos_be <- lizocimo_kontaktai_be %>% 
+  group_by(ar_1) %>% 
+  mutate(kontakto_tipas = paste(ar_1, ar_2)) %>% 
+  count(kontakto_tipas) %>% 
+  rename(suma = n)
+
+head(kontaktu_sumos_be)
+```
+## Kontaktu sumos pagal aminorugsties tipa
+Kontaktai susumuojami pagal tai, kuri aminorugstis sudaro kontakta, nekreipiant demesio i tai, su kuo sudaro.
+```{r}
+sumu_suma_be <- kontaktu_sumos_be %>%  
+  group_by(ar_1) %>% 
+  summarise(bendra_suma = sum(suma))
+
+head(sumu_suma)
+
+```
+
+## Stulpeline diagrama
+```{r}
+ggplot(sumu_suma_be) +
+ aes(x = ar_1, weight = `bendra_suma`) +
+ geom_bar()
+```
+
+
