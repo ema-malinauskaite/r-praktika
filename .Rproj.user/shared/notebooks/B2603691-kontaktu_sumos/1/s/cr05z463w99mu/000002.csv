@@ -1,5 +1,0 @@
-"0","sumu_suma_be <- kontaktu_sumos_be %>%  "
-"0","  group_by(ar_1) %>% "
-"0","  summarise(bendra_suma = sum(suma))"
-"0",""
-"0","head(sumu_suma)"

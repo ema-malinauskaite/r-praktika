@@ -1,2 +1,0 @@
-"0","lizocimo_kontaktai <- lizocimo_kontaktai %>%"
-"0"," mutate_if(is.character, forcats::as_factor)"
