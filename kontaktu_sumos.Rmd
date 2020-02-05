@@ -5,9 +5,13 @@ date: "1/12/2020"
 output: html_document
 ---
 
-```{r}
-library("dplyr")
-library("ggplot2")
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
 ```
 
 Duomenu ikelimas:
@@ -41,11 +45,28 @@ Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingai
 ```{r}
 kontaktu_sumos <- lizocimo_kontaktai %>% 
   group_by(ar_1) %>% 
-  mutate(kontakto_tipas = paste(ar_1, ar_2)) %>% 
+  mutate(kontakto_tipas = paste(ar_1,ar_2)) %>% 
+  mutate(as.factor(kontakto_tipas)) %>% 
   count(kontakto_tipas) %>% 
   rename(suma = n)
 
 head(kontaktu_sumos)
+summary(kontaktu_sumos)
+```
+
+
+Skaiciuoja poras neatsizvelgiant i tvarka, t.y., taip kaip ir reikia, bet neaisku kaip veikia kodas:
+```{r}
+d <- as.matrix(data.frame(a = lizocimo_kontaktai$ar_1, b = lizocimo_kontaktai$ar_2))
+
+#library(magrittr)
+
+d %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = " ")
+) %>% 
+  table(combo = .) %>% data.frame
+
 ```
 
 ## Kontaktu sumos pagal aminorugsties tipa
