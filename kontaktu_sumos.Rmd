@@ -23,102 +23,60 @@ Naudojamu kintamuju pervadinimas:
 ```{r}
 lizocimo_kontaktai <- lizocimo_kontaktai %>%
   rename(
+    id_1 = V2,
     ar_1 = V6,
-    ar_2 = V13
+    id_2 = V9,
+    ar_2 = V13, 
+    plotas = V15
   )
 ```
 
-```{r}
-lizocimo_kontaktai <- lizocimo_kontaktai %>%
- mutate_if(is.character, forcats::as_factor)
-```
-
-```{r}
-head(lizocimo_kontaktai) 
-```
-
-# Su vandeniu
-Skaiciuojami kontaktai, kai vienas is kontaktu tipu yra kontaktas su vandeniu.
-
-## Kontaktu sumos 
-Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingais kontaktais)
-```{r}
-kontaktu_sumos <- lizocimo_kontaktai %>% 
-  group_by(ar_1) %>% 
-  mutate(kontakto_tipas = paste(ar_1,ar_2)) %>% 
-  mutate(as.factor(kontakto_tipas)) %>% 
-  count(kontakto_tipas) %>% 
-  rename(suma = n)
-
-head(kontaktu_sumos)
-summary(kontaktu_sumos)
-```
-
-
-Skaiciuoja poras neatsizvelgiant i tvarka, t.y., taip kaip ir reikia, bet neaisku kaip veikia kodas:
-```{r}
-d <- as.matrix(data.frame(a = lizocimo_kontaktai$ar_1, b = lizocimo_kontaktai$ar_2))
-
-#library(magrittr)
-
-d %>% 
-  split(., row(.)) %>% sapply(
-  . %>% sort %>% paste(collapse = " ")
-) %>% 
-  table(combo = .) %>% data.frame
-
-```
-
-## Kontaktu sumos pagal aminorugsties tipa
-Kontaktai susumuojami pagal tai, kuri aminorugstis sudaro kontakta, nekreipiant demesio i tai, su kuo sudaro.
-```{r}
-sumu_suma <- kontaktu_sumos %>%  
-  group_by(ar_1) %>% 
-  summarise(bendra_suma = sum(suma))
-
-sumu_suma
-
-```
-
-## Stulpeline diagrama
-```{r}
-ggplot(sumu_suma) +
- aes(x = ar_1, weight = `bendra_suma`) +
- geom_bar()
-```
-
-# Be vandens
-Is kontaktu lenteles pasalinamos visos eilutes kuriose yra kontaktas su vandens molekule
-## Kontaktu sumos
-Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingais kontaktais).
+Paliekami tik reikalingi stulpeliai ir ismetami kontaktai su vandeniu:
 ```{r}
 lizocimo_kontaktai_be <- lizocimo_kontaktai %>%
-  dplyr::filter(ar_2 != ".")
-
-kontaktu_sumos_be <- lizocimo_kontaktai_be %>% 
-  group_by(ar_1) %>% 
-  mutate(kontakto_tipas = paste(ar_1, ar_2)) %>% 
-  count(kontakto_tipas) %>% 
-  rename(suma = n)
-
-head(kontaktu_sumos_be)
+  mutate_if(is.character, as_factor) %>% 
+  select(id_1, ar_1, id_2, ar_2, plotas) %>% 
+  filter(ar_2 != ".")
 ```
-## Kontaktu sumos pagal aminorugsties tipa
-Kontaktai susumuojami pagal tai, kuri aminorugstis sudaro kontakta, nekreipiant demesio i tai, su kuo sudaro.
+
 ```{r}
-sumu_suma_be <- kontaktu_sumos_be %>%  
-  group_by(ar_1) %>% 
-  summarise(bendra_suma = sum(suma))
-
-head(sumu_suma)
-
+head(lizocimo_kontaktai_be) 
 ```
 
-## Stulpeline diagrama
+Kontakto tipas sudaromas taip, kad pirma isrikiuojama eilute, tada sudaromas pavadinimas ir tuomet poras galima skaiciuoti neatsizvelgiant i tvarka:
 ```{r}
-ggplot(sumu_suma_be) +
- aes(x = ar_1, weight = `bendra_suma`) +
- geom_bar()
+liz_kont_matrica <- as.matrix(data.frame(ar_1 = lizocimo_kontaktai_be$ar_1, ar_2 = lizocimo_kontaktai_be$ar_2))
+
+surusiuoti_pavad <- liz_kont_matrica %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame
+
+ head(surusiuoti_pavad)
 ```
+
+Prijungiamas stulpelis su kontakto tipu prie pagrindines duomenu lenteles:
+```{r}
+lizocimo_kontaktai_be <- cbind(lizocimo_kontaktai_be, surusiuoti_pavad) %>% 
+  rename(kontakto_tipas = ".")
+
+head(lizocimo_kontaktai_be)
+```
+
+```{r}
+sumos_pagal_kont <- lizocimo_kontaktai_be %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(kontakto_suma = sum(plotas)) 
+
+head(sumos_pagal_kont)
+```
+
+
+
+
+
+
+
+
 
 
