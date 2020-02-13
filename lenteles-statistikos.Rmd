@@ -31,6 +31,40 @@ lizocimai_pagr <- lizocimai_pagr %>%
   mutate_if(is.character, as_factor)
 ```
 
+Lenteles pdb parsiuntimui:
+```{r}
+pdb_wt <- lizocimai_pagr %>% 
+  filter(WT == "wt") %>% 
+  select(pdb) %>% 
+  drop_na(pdb) 
+  
+data.table::fwrite(
+  pdb_wt,
+  file = "pdb_wt.txt",
+  sep = "\t",
+  dec = ".",
+  row.names  = FALSE,
+  col.names  = FALSE,
+  na = ""
+)
+
+pdb_wtx <- lizocimai_pagr %>% 
+  filter(WT == "wtx") %>% 
+  select(pdb) %>% 
+  drop_na(pdb)
+
+data.table::fwrite(
+  pdb_wtx,
+  file = "pdb_wtx.txt",
+  sep = "\t",
+  dec = ".",
+  row.names  = FALSE,
+  col.names  = FALSE,
+  na = ""
+)
+```
+
+
 Apskaiciuojamos temperaturos (ne temperaturu skirtumai):
 ```{r}
 lizocimai_pagr <- lizocimai_pagr %>%

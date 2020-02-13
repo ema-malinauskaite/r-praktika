@@ -12,20 +12,21 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r include=FALSE}
 library("tidyverse")
 library("data.table")
+library("compareDF")
+library("tidyr")
 ```
 
 Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai <- data.table::fread("./lizocimai/102L.pdb1.contacts.iterresue.table")
+lizocimo_kontaktai <- data.table::fread("./lizocimai2/2LZM.contacts.interresidue.table")
+head(lizocimo_kontaktai)
 ```
 
 Naudojamu kintamuju pervadinimas:
 ```{r}
 lizocimo_kontaktai <- lizocimo_kontaktai %>%
   rename(
-    id_1 = V2,
     ar_1 = V6,
-    id_2 = V9,
     ar_2 = V13, 
     plotas = V15
   )
@@ -33,19 +34,18 @@ lizocimo_kontaktai <- lizocimo_kontaktai %>%
 
 Paliekami tik reikalingi stulpeliai ir ismetami kontaktai su vandeniu:
 ```{r}
-lizocimo_kontaktai_be <- lizocimo_kontaktai %>%
+lizocimo_kontaktai <- lizocimo_kontaktai %>%
   mutate_if(is.character, as_factor) %>% 
-  select(id_1, ar_1, id_2, ar_2, plotas) %>% 
-  filter(ar_2 != ".")
+  select(ar_1, ar_2, plotas) 
 ```
 
 ```{r}
-head(lizocimo_kontaktai_be) 
+head(lizocimo_kontaktai) 
 ```
 
 Kontakto tipas sudaromas taip, kad pirma isrikiuojama eilute, tada sudaromas pavadinimas ir tuomet poras galima skaiciuoti neatsizvelgiant i tvarka:
 ```{r}
-liz_kont_matrica <- as.matrix(data.frame(ar_1 = lizocimo_kontaktai_be$ar_1, ar_2 = lizocimo_kontaktai_be$ar_2))
+liz_kont_matrica <- as.matrix(data.frame(ar_1 = lizocimo_kontaktai$ar_1, ar_2 = lizocimo_kontaktai$ar_2))
 
 surusiuoti_pavad <- liz_kont_matrica %>% 
   split(., row(.)) %>% sapply(
@@ -57,26 +57,58 @@ surusiuoti_pavad <- liz_kont_matrica %>%
 
 Prijungiamas stulpelis su kontakto tipu prie pagrindines duomenu lenteles:
 ```{r}
-lizocimo_kontaktai_be <- cbind(lizocimo_kontaktai_be, surusiuoti_pavad) %>% 
+lizocimo_kontaktai_ <- cbind(lizocimo_kontaktai, surusiuoti_pavad) %>% 
   rename(kontakto_tipas = ".")
 
-head(lizocimo_kontaktai_be)
+lizocimo_kontaktai_
 ```
 
 ```{r}
-sumos_pagal_kont <- lizocimo_kontaktai_be %>% 
+sumos_pagal_kont <- lizocimo_kontaktai_ %>% 
   group_by(kontakto_tipas) %>% 
   summarise(kontakto_suma = sum(plotas)) 
 
 head(sumos_pagal_kont)
 ```
 
+# Nulines lenteles kurimas
+
+Duomenu ikelimas:
+```{r}
+aminorugstys <- read_excel("/Users/user/Desktop/praktika/r-praktika/data/aminorugstys.xlsx",sheet = "Sheet1") 
+```
+
+```{r}
+aminorugstys_matrica <- as.matrix(data.frame(ar_1 = aminorugstys$ar_1, ar_2 = aminorugstys$ar_2))
+
+surusiuoti_pavad_ar <- aminorugstys_matrica %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame %>% 
+  rename(kontakto_tipas = ".") %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise()
+
+nuline_lentele <- cbind(surusiuoti_pavad_ar, as.data.frame(rep(0, 230))) %>% 
+  rename(kontakto_suma = "rep(0, 230)")
+
+nuline_lentele_platusis <- spread(nuline_lentele, kontakto_tipas, kontakto_suma)
+readr::write_rds(nuline_lentele_platusis, "./data/nuline_lentele_platusis.rds")
+```
 
 
 
+# Lenteles vertimas bendra forma
 
+```{r}
+sumos_pagal_kont_platusis <- spread(sumos_pagal_kont, kontakto_tipas, kontakto_suma)
 
+sujungta <- full_join(nuline_lentele_platusis, sumos_pagal_kont_platusis)
+sujungta <- gather(sujungta) %>% 
+  rename(kontakto_tipas = key) %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(kontakto_suma = sum(value)) %>% 
+  mutate_all(~replace(., is.na(.), 0))
 
-
-
-
+sujungta
+```

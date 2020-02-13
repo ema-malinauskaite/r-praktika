@@ -1,0 +1,63 @@
+---
+title: "fun_kontaktu_sumai"
+author: "Ema Malinauskaite"
+date: "2/12/2020"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+```
+
+Duomenu ikelimas:
+```{r}
+lizocimo_kontaktai <- data.table::fread("./lizocimai2/2LZM.contacts.interresidue.table")
+nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+```
+
+# Funkcijos kurimas
+
+```{r}
+fun_kontaktu_sumai <- function(liz_kont, nul_lentele_plat) { #pirmas kintamasis kontaktu lentele, antras nuline lentele
+
+liz_kont_matrica <- as.matrix(data.frame(ar_1 = liz_kont$V6, ar_2 = liz_kont$V13))
+
+surusiuoti_pavad <- liz_kont_matrica %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame
+
+kont_sumos<- cbind(liz_kont, surusiuoti_pavad) %>% 
+  rename(kontakto_tipas = ".") %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(kontakto_suma = sum(V15)) 
+
+kont_sumos_plat <- spread(kont_sumos, kontakto_tipas, kontakto_suma)
+
+sujungta <- full_join(nul_lentele_plat, kont_sumos_plat) %>% 
+  gather() %>% 
+  rename(kontakto_tipas = "key") %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(kontakto_suma = sum(value)) %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+return(sujungta)
+}
+```
+
+# Bandymas
+
+```{r}
+paruosta_lentele <-  fun_kontaktu_sumai(lizocimo_kontaktai, nuline_lentele_platusis)
+
+paruosta_lentele
+```
+
