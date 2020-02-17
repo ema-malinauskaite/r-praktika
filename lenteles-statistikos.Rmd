@@ -18,52 +18,18 @@ Duomenu ikelimas:
 ```{r}
 lizocimai_pagr <- readxl::read_excel("./data/pro_344_sm_suppinfo.xlsx", sheet = "pilnas") %>%
   as.data.frame(stringsAsFactors = FALSE)
-
-names(lizocimai_pagr) <- make.names(names(lizocimai_pagr))
 ```
 
 Duomenų tvarkymas:
 ```{r}
+names(lizocimai_pagr) <- make.names(names(lizocimai_pagr))
+
 lizocimai_pagr <- lizocimai_pagr %>%
   mutate(WT = ifelse((str_detect(Protein, "WT\\*")) == TRUE, "wtx", "wt")) %>% 
   select(-Protein, -Activity, -Space.group, -Reoslution..A., -Comment, -Tm) %>% 
   rename(pdb = PDB.code, deltaTm = ΔTm, ddeltaG = ΔΔG ) %>% 
   mutate_if(is.character, as_factor)
 ```
-
-Lenteles pdb parsiuntimui:
-```{r}
-pdb_wt <- lizocimai_pagr %>% 
-  filter(WT == "wt") %>% 
-  select(pdb) %>% 
-  drop_na(pdb) 
-  
-data.table::fwrite(
-  pdb_wt,
-  file = "pdb_wt.txt",
-  sep = "\t",
-  dec = ".",
-  row.names  = FALSE,
-  col.names  = FALSE,
-  na = ""
-)
-
-pdb_wtx <- lizocimai_pagr %>% 
-  filter(WT == "wtx") %>% 
-  select(pdb) %>% 
-  drop_na(pdb)
-
-data.table::fwrite(
-  pdb_wtx,
-  file = "pdb_wtx.txt",
-  sep = "\t",
-  dec = ".",
-  row.names  = FALSE,
-  col.names  = FALSE,
-  na = ""
-)
-```
-
 
 Apskaiciuojamos temperaturos (ne temperaturu skirtumai):
 ```{r}
@@ -75,6 +41,11 @@ Duomenų peržiūra:
 ```{r}
 summary(lizocimai_pagr)
 head(lizocimai_pagr)
+```
+
+Sutvarkytu duomenu issaugojimas:
+```{r}
+readr::write_rds(lizocimai_pagr, "./data/pro_344_sm_suppinfo.rds")
 ```
 
 # Skaiciuojamos statistikos iskirscius pagal WT

@@ -10,12 +10,13 @@ library("tidyverse")
 library("data.table")
 library("compareDF")
 library("tidyr")
+library("matlib")
 ```
 
-# Funkcijos kurimas
+# Funkcija: fun_kontaktu_sumai
 
 ```{r}
-fun_kontaktu_sumai <- function(liz_kont, nul_lentele_plat) { #pirmas kintamasis kontaktu lentele, antras nuline lentele
+fun_kontaktu_sumai <- function(liz_kont, nul_lentele_plat) { #pirmas - kontaktu lentele, antras - nuline lentele
 
 liz_kont_matrica <- as.matrix(data.frame(ar_1 = liz_kont$V6, ar_2 = liz_kont$V13))
 
@@ -42,7 +43,8 @@ return(sujungta)
 }
 ```
 
-## Bandymas
+## Bandymas 
+
 Duomenu ikelimas:
 ```{r}
 lizocimo_kontaktai <- data.table::fread("./wtx/1L63.contacts.interresidue.table")
@@ -52,110 +54,155 @@ nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
 ```{r}
 paruosta_lentele <- fun_kontaktu_sumai(lizocimo_kontaktai, nuline_lentele_platusis)
 
-#readr::write_rds(paruosta_lentele, "./data/wtx_platusis.rds")
 paruosta_lentele
 ```
 
-# Funkcija kontaktu sumu skirtumu matricai ir temperaturu skirtumu matricoms sudaryti, kurios turetu tiek pat eiluciu
+# Funkcija: fun_kont_sum_ir_temp_skirtumams
+(jos turetu tureti tiek pat eiluciu)
 
-## Paruosiamoji dalis, reikalingu kenteliu kurimas:
+## Paruosiamoji dalis
+### Paruosiamos wt ir wtx kontaktu plotu lenteles
+```{r include=FALSE}
+wt_2LZM_platusis <- data.table::fread("./wt/2LZM.contacts.interresidue.table")
+wtx_1L63_platusis <- data.table::fread("./wtx/1L63.contacts.interresidue.table")
 
-Bandymui bus naudojama wt = wt temperaturu lentele, kurioje isfiltruoti tiek pdb na, tiek tm na ir paimtos pirmos 6 eilutes.
+wt_2LZM_platusis <- fun_kontaktu_sumai(wt_2LZM_platusis, nuline_lentele_platusis)
+wtx_1L63_platusis <- fun_kontaktu_sumai(wtx_1L63_platusis, nuline_lentele_platusis)
+
+readr::write_rds(wt_2LZM_platusis, "./data/wt_2LZM_platusis.rds")
+readr::write_rds(wtx_1L63_platusis, "./data/wtx_1L63_platusis.rds")
+```
+
+### Duomenys bandymui
+Bandymui bus naudojama WT = wt temperaturu lentele, kurioje isfiltruoti tiek pdb na, tiek tm na ir paimtos pirmos 6 eilutes.
 
 Duomenu ikelimas:
 ```{r}
-lizocimai_pagr <- readxl::read_excel("./data/pro_344_sm_suppinfo.xlsx", sheet = "pilnas") %>%
-  as.data.frame(stringsAsFactors = FALSE)
-names(lizocimai_pagr) <- make.names(names(lizocimai_pagr))
-
-wt_platusis <- readr::read_rds("./data/wt_platusis.rds")
-```
-
-Duomenų tvarkymas:
-```{r}
-lizocimai_pagr <- lizocimai_pagr %>%
-  mutate(WT = ifelse((str_detect(Protein, "WT\\*")) == TRUE, "wtx", "wt")) %>% 
-  select(-Protein, -Activity, -Space.group, -Reoslution..A., -Comment, -Tm) %>% 
-  rename(pdb = PDB.code, deltaTm = ΔTm, ddeltaG = ΔΔG ) %>% 
-  mutate_if(is.character, as_factor)
-```
-
-Apskaiciuojamos temperaturos (ne temperaturu skirtumai):
-```{r}
-lizocimai_pagr <- lizocimai_pagr %>%
-  mutate(Tm = if_else(WT == "wt", deltaTm + 67.2, deltaTm + 65.8))
-
-head(lizocimai_pagr)
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+wt_2LZM_platusis <- wt_2LZM_platusis #readr::read_rds("./data/wt_platusis.rds")
 ```
 
 ```{r}
-pdb_tm_wt <- lizocimai_pagr %>% 
+pdb_tm_wt_pvz <- lizocimai_pagr %>% 
   filter(WT == "wt") %>% 
   select(pdb, Tm) %>% 
   drop_na(pdb, Tm) %>% 
   head()
 
-pdb_tm_wt
+pdb_tm_wt_pvz
 ```
 
-## Funkcija
+## Funkcijos rasymas
 Si funkcija, su duotais inputais cikle pirmiausiai turetu ir pbd_termo pasiimti pirmo baltymo pdb ir perleisti per fun_kontaktu_sumai. Tada, kai turi standartizuota baltymo kontaktu lentele, ja reiketu prideti prie WT lenteles, kadangi jos abi yra placiuoju formatu, naudoti full_join kad sutikrintu pagal stulpeliu pavadinimus. 
 Pavertus i ilgaji formata lenteleje su funkcija summarise suskaiciuoti skirtuma tada paversti i platuju formata vel ir prideti prie bendros lenteles kur kiekvienoj eilutej bus dvieju baltymu kontaktu skirtumas, o stulpely kontakto tipas. Po ciklo tokia lentele reiktu paversti matrica. Taip pat ciklo metu reiktu paimti temperatura, ja atimti is wt temperaturos ir prideti i kita lentele, kuri irgi bus naudojama tiesinems lygtims. outputas turetu buti dvi matricos: viena kuri turi 230 stulpeliu ir tiek eiluciu, kiek yra baltymu, kita tureti tik viena stulpeli pasirinktam termodinaminiam parametrui ir tiek pat eiluciu kaip ir kita matrica.
 
+PASTABOS:
+sitoje funkcijoje galbut labiau tiktu dirbti su matricomis, nes tuomet nereiketu naudoti funkcijos transpose, funkcija butu greitesne, bet klausimas, ar iseis viska padaryti su matrica
 
-
-```{r}
+```{r message=FALSE}
 #input:
-pdb_termo <- pdb_tm_wt #lentele, kurioje vienas stulpelis pasirinktas termodinaminis parametras, kitas stulpelis pdb failo pavadinimas
+# pdb_termo_lent - lentele, kurioje vienas stulpelis pasirinktas termodinaminis parametras, kitas stulpelis pdb failo pavadinimas
+# WT_platusis - sutvarkyta pasirinkto wt placiojo formato, su kuriuo bus lyginami kiti baltymai lentele su kontaktu plotu sumomis
+# WT_termo - pasirinkto termodinaminio parametro reiksme pasirinktam WT tipui
+#WT_tipas - wt arba wtx
+# nul_lent_plat - nuline lentele skirta fun_kontaktu_sumai
 
-WT <- wt_platusis #sutvarkyta pasirinkto wt placiojo formato, su kuriuo bus lyginami kiti baltymai lentele su kontaktu plotu sumomis
-
-nul_lent <- nuline_lentele_platusis
-
-#funkcijos vidus:
-
-# pdb <- pdb_termo %>% 
-#   select(pdb)
-
-for(i in pdb_termo$pdb) {
-  
-lizocimo_kontaktai <- data.table::fread(paste("./wt/",i,".contacts.interresidue.table", sep = ""))
-
-kontaktu_sumos <- fun_kontaktu_sumai(lizocimo_kontaktai, nul_lent)
-
- wt_ir_lizocimas <- rbind(WT, kontaktu_sumos) #%>%
-#   .[1,] - .[2, ]
-#  gather()
-
-#   group_by(key) %>% 
-#   summarise(kontakto_sumu_skirtumas =  %>% 
-#   mutate_all(~replace(., is.na(.), 0)) %>% 
-#   spread(., key, kontakto_suma)
-
-print(wt_ir_lizocimas)
+fun_kont_sum_ir_temp_skirtumams <- function(pdb_termo_lent, WT_platusis, WT_termo, WT_tipas, nul_lent_plat) {
+visu_baltymu_kont_sumu_skirtumai <- data.frame()
+termo_skirtumai <- data.frame() #desine tiesiniu lygciu sistemos puse matricose
+#----
+for (i in pdb_termo_lent$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./",WT_tipas,"/",i,".contacts.interresidue.table", sep = ""))
+kontaktu_sumos <- fun_kontaktu_sumai(lizocimo_kontaktai, nul_lent_plat)
+wt_ir_lizocimas <- rbind(WT_platusis, kontaktu_sumos) %>%
+  transpose(keep.names = "kontakto_tipas") %>% 
+  mutate(kont_sumu_skirtumas = V1 - V2) %>% 
+  select(kontakto_tipas, kont_sumu_skirtumas) %>% 
+  transpose(make.names = "kontakto_tipas")
+visu_baltymu_kont_sumu_skirtumai <- rbind(visu_baltymu_kont_sumu_skirtumai, wt_ir_lizocimas)
 lizocimo_kontaktai = NULL
-
+#----
+termo <- pdb_termo_lent %>% 
+  filter(pdb == i) %>% 
+  mutate(termo_skirtumas = WT_termo - .[[2]]) %>% 
+  select(-Tm) 
+termo_skirtumai <- rbind(termo_skirtumai,termo) 
+ }
+termo_skirtumai <- termo_skirtumai %>%
+  transpose(make.names = TRUE)
+return(list(visu_baltymu_kont_sumu_skirtumai = as.matrix(visu_baltymu_kont_sumu_skirtumai),termo_skirtumai = as.matrix(termo_skirtumai)))
 }
-
 ```
 
+```{r message=FALSE}
+matricu_lenteles_pvz <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_wt_pvz, wt_2LZM_platusis, 67.2, "wt", nuline_lentele_platusis)
+```
 
 ```{r}
- # Create a vector filled with random normal values
-u1 <- rnorm(30)
-print("This loop calculates the square of the first 10 elements of vector u1")
+matricu_lenteles_pvz$termo_skirtumai
+matricu_lenteles_pvz$visu_baltymu_kont_sumu_skirtumai
+```
 
-# Initialize `usq`
-usq <- 0
-
-for(i in 1:10) {
-  # i-th element of `u1` squared into `i`-th position of `usq`
-  usq[i] <- u1[i]*u1[i]
-  print(usq[i])
-}
-
-print(i)
+# Tiesines lygciu sistemos sprendimas
+## wtx
+### Duomenys
+Duomenu ikelimas:
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
 ```
 
 
+PATIKRINT KURIE KONKRECIAI BALTYMAI CIA YRA SU MSE
+```{r}
+pdb_tm_wtx <- lizocimai_pagr %>% 
+  filter(WT == "wtx") %>% 
+  select(pdb, Tm) %>% 
+  drop_na(pdb, Tm) %>% 
+  filter(pdb != "1LPY",
+         pdb != "1LWK",
+         pdb != "1LWG",
+         pdb != "1KW5",
+         pdb != "1L0K",
+         pdb != "1D3M",
+         pdb != "1D3N",
+         pdb != "1KY1",
+         pdb != "1CX7",
+         pdb != "1CX6")
+```
 
+```{r message=FALSE}
+matricu_lenteles_wtx <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_wtx, wtx_1L63_platusis, 65.8, "wtx", nuline_lentele_platusis)
+```
+
+### Sprendimas
+```{r}
+A <- matricu_lenteles_wtx$visu_baltymu_kont_sumu_skirtumai
+b <- c(matricu_lenteles_wtx$termo_skirtumai)
+showEqn(A, b)
+```
+
+```{r}
+c( R(A), R(cbind(A,b)) )          # show ranks
+```
+
+```{r}
+all.equal( R(A), R(cbind(A,b)) )  # consistent?
+```
+
+```{r}
+Solve(A, b, fractions = TRUE)
+ #%>% data.frame()
+```
+
+## wt
+```{r}
+pdb_tm_wt <- lizocimai_pagr %>% 
+  filter(WT == "wt") %>% 
+  select(pdb, Tm) %>% 
+  drop_na(pdb, Tm)
+pdb_tm_wt
+```
+
+```{r message=FALSE}
+matricu_lenteles_wt <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_wt, wt_2LZM_platusis, 67.2, "wt", nuline_lentele_platusis)
+```

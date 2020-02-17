@@ -16,9 +16,47 @@ library("compareDF")
 library("tidyr")
 ```
 
+# Lenteles pdb parsiuntimui
+
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+
+pdb_wt <- lizocimai_pagr %>% 
+  filter(WT == "wt") %>% 
+  select(pdb) %>% 
+  drop_na(pdb) 
+  
+data.table::fwrite(
+  pdb_wt,
+  file = "pdb_wt.txt",
+  sep = "\t",
+  dec = ".",
+  row.names  = FALSE,
+  col.names  = FALSE,
+  na = ""
+)
+
+pdb_wtx <- lizocimai_pagr %>% 
+  filter(WT == "wtx") %>% 
+  select(pdb) %>% 
+  drop_na(pdb)
+
+data.table::fwrite(
+  pdb_wtx,
+  file = "pdb_wtx.txt",
+  sep = "\t",
+  dec = ".",
+  row.names  = FALSE,
+  col.names  = FALSE,
+  na = ""
+)
+```
+
+# Paruosiamoji dalis 
+
 Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai <- data.table::fread("./lizocimai2/2LZM.contacts.interresidue.table")
+lizocimo_kontaktai <- data.table::fread("./wt/2LZM.contacts.interresidue.table")
 head(lizocimo_kontaktai)
 ```
 
@@ -42,6 +80,8 @@ lizocimo_kontaktai <- lizocimo_kontaktai %>%
 ```{r}
 head(lizocimo_kontaktai) 
 ```
+
+# Kontaktu plotu sumu skaiciavimas
 
 Kontakto tipas sudaromas taip, kad pirma isrikiuojama eilute, tada sudaromas pavadinimas ir tuomet poras galima skaiciuoti neatsizvelgiant i tvarka:
 ```{r}
@@ -75,9 +115,10 @@ head(sumos_pagal_kont)
 
 Duomenu ikelimas:
 ```{r}
-aminorugstys <- read_excel("/Users/user/Desktop/praktika/r-praktika/data/aminorugstys.xlsx",sheet = "Sheet1") 
+aminorugstys <- readxl::read_excel("/Users/user/Desktop/praktika/r-praktika/data/aminorugstys.xlsx",sheet = "Sheet1") 
 ```
 
+GRIZUS PARASYTI NORMALU KODA NE PLACIAJAI O ILGAJAI LENTELEI
 ```{r}
 aminorugstys_matrica <- as.matrix(data.frame(ar_1 = aminorugstys$ar_1, ar_2 = aminorugstys$ar_2))
 
@@ -89,14 +130,18 @@ surusiuoti_pavad_ar <- aminorugstys_matrica %>%
   group_by(kontakto_tipas) %>% 
   summarise()
 
-nuline_lentele <- cbind(surusiuoti_pavad_ar, as.data.frame(rep(0, 230))) %>% 
+nuline_lentele_ilgasis <- cbind(surusiuoti_pavad_ar, as.data.frame(rep(0, 230))) %>% 
   rename(kontakto_suma = "rep(0, 230)")
 
+nuline_lentele_ilgasis
+
 nuline_lentele_platusis <- spread(nuline_lentele, kontakto_tipas, kontakto_suma)
+
+nuline_lentele_platusis
+
+readr::write_rds(nuline_lentele_ilgasis, "./data/nuline_lentele_ilgasis.rds")
 readr::write_rds(nuline_lentele_platusis, "./data/nuline_lentele_platusis.rds")
 ```
-
-
 
 # Lenteles vertimas bendra forma
 
