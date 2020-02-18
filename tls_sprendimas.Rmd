@@ -1,0 +1,137 @@
+---
+title: "tiesines lygciu sistemos sprendimas"
+author: "Ema Malinauskaite"
+date: "2/18/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+library("matlib")
+```
+
+# Tiesines lygciu sistemos sprendimas
+## Duomenys wtx
+Duomenu ikelimas:
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+wtx_1L63_platusis <- readr::read_rds("./data/wtx_1L63_platusis.rds")
+wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
+```
+
+```{r}
+pdb_tm_wtx <- lizocimai_pagr %>% 
+  filter(WT == "wtx") %>% 
+  select(pdb, deltaTm, WT) %>% 
+  drop_na(pdb, deltaTm) %>% 
+  filter(pdb != "2LZM" & pdb != "1L63")
+pdb_tm_wtx
+```
+
+```{r message=FALSE}
+matricu_lenteles_wtx <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_wtx, wtx_platusis = wtx_1L63_platusis, wt_platusis = wt_2LZM_platusis, nuline_lentele_platusis)
+```
+
+### Sprendimas
+```{r}
+A <- matricu_lenteles_wtx$visu_baltymu_kont_sumu_skirtumai
+b <- c(matricu_lenteles_wtx$termo_skirtumai)
+-showEqn(A, b)
+```
+
+```{r}
+c( R(A), R(cbind(A,b)) )          # show ranks
+```
+
+```{r}
+all.equal( R(A), R(cbind(A,b)) )  # consistent?
+```
+
+```{r}
+tls_sprendimas <- Solve(A, b, fractions = FALSE)
+```
+
+```{r}
+tls_sprendimas_df <- tls_sprendimas %>% data.frame() 
+tls_sprendimas_df
+
+# data.table::fwrite(
+#   tls_sprendimas_df,
+#   file = "./rezultatai/lygciu_sistemos_sprendimas_tik_wtx_su_mut.txt",
+#   sep = "\t",
+#   dec = ".",
+#   row.names  = FALSE,
+#   col.names  = TRUE,
+#   na = ""
+# )
+```
+
+## Duomenys imant wt ir wtx kartu
+Duomenu ikelimas:
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+wtx_1L63_platusis <- readr::read_rds("./data/wtx_1L63_platusis.rds")
+wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
+```
+
+```{r}
+pdb_tm <- lizocimai_pagr %>% 
+  select(pdb, deltaTm, WT) %>% 
+  drop_na(pdb, deltaTm) %>% 
+  filter(pdb != "2LZM" & pdb != "1L63") %>% 
+  head(230)
+pdb_tm
+```
+
+```{r message=FALSE}
+matricu_lenteles_wtx_ir_wt <- fun_kont_sum_ir_temp_skirtumams(pdb_tm, wtx_platusis = wtx_1L63_platusis, wt_platusis = wt_2LZM_platusis, nuline_lentele_platusis)
+```
+
+### Sprendimas
+
+```{r}
+kontaktu_pavadinimai <- nuline_lentele_platusis %>% 
+  transpose(keep.names = "pavadinimai") %>% 
+  select(-V1)
+
+kontaktu_pavadinimai
+```
+```{r}
+A <- matricu_lenteles_wtx_ir_wt$visu_baltymu_kont_sumu_skirtumai
+colnames(A) <- kontaktu_pavadinimai$pavadinimai
+b <- c(matricu_lenteles_wtx_ir_wt$termo_skirtumai)
+# showEqn(A, b)
+```
+
+```{r}
+c( R(A), R(cbind(A,b)) )          # show ranks
+```
+
+```{r}
+all.equal( R(A), R(cbind(A,b)) )  # consistent?
+```
+
+PANAUDOTI FUNKCIJA IS PAKETO APRASO, KUR JIEGU NURODAI COLNAMES TAI PADARO GRAZIA FORMA
+```{r}
+#tls_sprendimas_wt_ir_wtx <- solve(A, b)
+```
+
+```{r}
+tls_sprendimas_wt_ir_wtx_df <- tls_sprendimas_wt_ir_wtx %>% data.frame() 
+tls_sprendimas_wt_ir_wtx_df
+
+# data.table::fwrite(
+#   tls_sprendimas_df,
+#   file = "./rezultatai/lygciu_sistemos_sprendimas_wt_kartu_su_wtx_pirmi_230_baltymu.txt",
+#   sep = "\t",
+#   dec = ".",
+#   row.names  = FALSE,
+#   col.names  = TRUE,
+#   na = ""
+# )
+```

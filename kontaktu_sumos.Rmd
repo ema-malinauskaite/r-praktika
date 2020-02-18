@@ -118,7 +118,6 @@ Duomenu ikelimas:
 aminorugstys <- readxl::read_excel("/Users/user/Desktop/praktika/r-praktika/data/aminorugstys.xlsx",sheet = "Sheet1") 
 ```
 
-GRIZUS PARASYTI NORMALU KODA NE PLACIAJAI O ILGAJAI LENTELEI
 ```{r}
 aminorugstys_matrica <- as.matrix(data.frame(ar_1 = aminorugstys$ar_1, ar_2 = aminorugstys$ar_2))
 
