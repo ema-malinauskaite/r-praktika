@@ -1,0 +1,26 @@
+---
+title: "Untitled"
+author: "Ema Malinauskaite"
+date: "2/13/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("tidyr")
+```
+
+
+Duomenu ikelimas:
+```{r}
+lizocimo_kontaktai <- data.table::fread("./wtx/1LPY.contacts.interresidue.table")
+nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+```
+
+
+```{r}
+paruosta_lentele <- fun_kontaktu_sumai(lizocimo_kontaktai, nuline_lentele_platusis)
+
+paruosta_lentele %>% transpose(keep.names = "names")
+```

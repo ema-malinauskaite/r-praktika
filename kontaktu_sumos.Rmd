@@ -12,11 +12,52 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r include=FALSE}
 library("tidyverse")
 library("data.table")
+library("compareDF")
+library("tidyr")
 ```
+
+# Lenteles pdb parsiuntimui
+
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+
+pdb_wt <- lizocimai_pagr %>% 
+  filter(WT == "wt") %>% 
+  select(pdb) %>% 
+  drop_na(pdb) 
+  
+data.table::fwrite(
+  pdb_wt,
+  file = "pdb_wt.txt",
+  sep = "\t",
+  dec = ".",
+  row.names  = FALSE,
+  col.names  = FALSE,
+  na = ""
+)
+
+pdb_wtx <- lizocimai_pagr %>% 
+  filter(WT == "wtx") %>% 
+  select(pdb) %>% 
+  drop_na(pdb)
+
+data.table::fwrite(
+  pdb_wtx,
+  file = "pdb_wtx.txt",
+  sep = "\t",
+  dec = ".",
+  row.names  = FALSE,
+  col.names  = FALSE,
+  na = ""
+)
+```
+
+# Paruosiamoji dalis 
 
 Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai <- data.table::fread("./lizocimai/102L.pdb1.contacts.iterresue.table")
+lizocimo_kontaktai <- data.table::fread("./wt/2LZM.contacts.interresidue.table")
+head(lizocimo_kontaktai)
 ```
 
 Naudojamu kintamuju pervadinimas:
@@ -24,101 +65,95 @@ Naudojamu kintamuju pervadinimas:
 lizocimo_kontaktai <- lizocimo_kontaktai %>%
   rename(
     ar_1 = V6,
-    ar_2 = V13
+    ar_2 = V13, 
+    plotas = V15
   )
 ```
 
+Paliekami tik reikalingi stulpeliai ir ismetami kontaktai su vandeniu:
 ```{r}
 lizocimo_kontaktai <- lizocimo_kontaktai %>%
- mutate_if(is.character, forcats::as_factor)
+  mutate_if(is.character, as_factor) %>% 
+  select(ar_1, ar_2, plotas) 
 ```
 
 ```{r}
 head(lizocimo_kontaktai) 
 ```
 
-# Su vandeniu
-Skaiciuojami kontaktai, kai vienas is kontaktu tipu yra kontaktas su vandeniu.
+# Kontaktu plotu sumu skaiciavimas
 
-## Kontaktu sumos 
-Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingais kontaktais)
+Kontakto tipas sudaromas taip, kad pirma isrikiuojama eilute, tada sudaromas pavadinimas ir tuomet poras galima skaiciuoti neatsizvelgiant i tvarka:
 ```{r}
-kontaktu_sumos <- lizocimo_kontaktai %>% 
-  group_by(ar_1) %>% 
-  mutate(kontakto_tipas = paste(ar_1,ar_2)) %>% 
-  mutate(as.factor(kontakto_tipas)) %>% 
-  count(kontakto_tipas) %>% 
-  rename(suma = n)
+liz_kont_matrica <- as.matrix(data.frame(ar_1 = lizocimo_kontaktai$ar_1, ar_2 = lizocimo_kontaktai$ar_2))
 
-head(kontaktu_sumos)
-summary(kontaktu_sumos)
-```
-
-
-Skaiciuoja poras neatsizvelgiant i tvarka, t.y., taip kaip ir reikia, bet neaisku kaip veikia kodas:
-```{r}
-d <- as.matrix(data.frame(a = lizocimo_kontaktai$ar_1, b = lizocimo_kontaktai$ar_2))
-
-#library(magrittr)
-
-d %>% 
+surusiuoti_pavad <- liz_kont_matrica %>% 
   split(., row(.)) %>% sapply(
-  . %>% sort %>% paste(collapse = " ")
-) %>% 
-  table(combo = .) %>% data.frame
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame
 
+ head(surusiuoti_pavad)
 ```
 
-## Kontaktu sumos pagal aminorugsties tipa
-Kontaktai susumuojami pagal tai, kuri aminorugstis sudaro kontakta, nekreipiant demesio i tai, su kuo sudaro.
+Prijungiamas stulpelis su kontakto tipu prie pagrindines duomenu lenteles:
 ```{r}
-sumu_suma <- kontaktu_sumos %>%  
-  group_by(ar_1) %>% 
-  summarise(bendra_suma = sum(suma))
+lizocimo_kontaktai_ <- cbind(lizocimo_kontaktai, surusiuoti_pavad) %>% 
+  rename(kontakto_tipas = ".")
 
-sumu_suma
-
+lizocimo_kontaktai_
 ```
 
-## Stulpeline diagrama
 ```{r}
-ggplot(sumu_suma) +
- aes(x = ar_1, weight = `bendra_suma`) +
- geom_bar()
+sumos_pagal_kont <- lizocimo_kontaktai_ %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(kontakto_suma = sum(plotas)) 
+
+head(sumos_pagal_kont)
 ```
 
-# Be vandens
-Is kontaktu lenteles pasalinamos visos eilutes kuriose yra kontaktas su vandens molekule
-## Kontaktu sumos
-Sumuojami kontaktai pagal ju rusi (kol kas MET-ALA ir ALA-MET laikomi skirtingais kontaktais).
+# Nulines lenteles kurimas
+
+Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai_be <- lizocimo_kontaktai %>%
-  dplyr::filter(ar_2 != ".")
-
-kontaktu_sumos_be <- lizocimo_kontaktai_be %>% 
-  group_by(ar_1) %>% 
-  mutate(kontakto_tipas = paste(ar_1, ar_2)) %>% 
-  count(kontakto_tipas) %>% 
-  rename(suma = n)
-
-head(kontaktu_sumos_be)
+aminorugstys <- readxl::read_excel("/Users/user/Desktop/praktika/r-praktika/data/aminorugstys.xlsx",sheet = "Sheet1") 
 ```
-## Kontaktu sumos pagal aminorugsties tipa
-Kontaktai susumuojami pagal tai, kuri aminorugstis sudaro kontakta, nekreipiant demesio i tai, su kuo sudaro.
+
+GRIZUS PARASYTI NORMALU KODA NE PLACIAJAI O ILGAJAI LENTELEI
 ```{r}
-sumu_suma_be <- kontaktu_sumos_be %>%  
-  group_by(ar_1) %>% 
-  summarise(bendra_suma = sum(suma))
+aminorugstys_matrica <- as.matrix(data.frame(ar_1 = aminorugstys$ar_1, ar_2 = aminorugstys$ar_2))
 
-head(sumu_suma)
+surusiuoti_pavad_ar <- aminorugstys_matrica %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame %>% 
+  rename(kontakto_tipas = ".") %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise()
 
+nuline_lentele_ilgasis <- cbind(surusiuoti_pavad_ar, as.data.frame(rep(0, 230))) %>% 
+  rename(kontakto_suma = "rep(0, 230)")
+
+nuline_lentele_ilgasis
+
+nuline_lentele_platusis <- spread(nuline_lentele, kontakto_tipas, kontakto_suma)
+
+nuline_lentele_platusis
+
+readr::write_rds(nuline_lentele_ilgasis, "./data/nuline_lentele_ilgasis.rds")
+readr::write_rds(nuline_lentele_platusis, "./data/nuline_lentele_platusis.rds")
 ```
 
-## Stulpeline diagrama
+# Lenteles vertimas bendra forma
+
 ```{r}
-ggplot(sumu_suma_be) +
- aes(x = ar_1, weight = `bendra_suma`) +
- geom_bar()
+sumos_pagal_kont_platusis <- spread(sumos_pagal_kont, kontakto_tipas, kontakto_suma)
+
+sujungta <- full_join(nuline_lentele_platusis, sumos_pagal_kont_platusis)
+sujungta <- gather(sujungta) %>% 
+  rename(kontakto_tipas = key) %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(kontakto_suma = sum(value)) %>% 
+  mutate_all(~replace(., is.na(.), 0))
+
+sujungta
 ```
-
-

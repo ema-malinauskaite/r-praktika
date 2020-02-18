@@ -18,12 +18,12 @@ Duomenu ikelimas:
 ```{r}
 lizocimai_pagr <- readxl::read_excel("./data/pro_344_sm_suppinfo.xlsx", sheet = "pilnas") %>%
   as.data.frame(stringsAsFactors = FALSE)
-
-names(lizocimai_pagr) <- make.names(names(lizocimai_pagr))
 ```
 
 Duomenų tvarkymas:
 ```{r}
+names(lizocimai_pagr) <- make.names(names(lizocimai_pagr))
+
 lizocimai_pagr <- lizocimai_pagr %>%
   mutate(WT = ifelse((str_detect(Protein, "WT\\*")) == TRUE, "wtx", "wt")) %>% 
   select(-Protein, -Activity, -Space.group, -Reoslution..A., -Comment, -Tm) %>% 
@@ -43,11 +43,18 @@ summary(lizocimai_pagr)
 head(lizocimai_pagr)
 ```
 
+Sutvarkytu duomenu issaugojimas:
+```{r}
+readr::write_rds(lizocimai_pagr, "./data/pro_344_sm_suppinfo.rds")
+```
+
 # Skaiciuojamos statistikos iskirscius pagal WT
 Isskirscius pagal WT skaiciuojamos statistikos grupems:
 ```{r}
 lizocimai_stat_WT_T <- lizocimai_pagr %>% 
-  filter(!is.na(Tm)) %>%
+  filter(!is.na(Tm)) 
+
+lizocimai_stat_WT_T %>%
   group_by(WT) %>%
   summarise(Tm_vidurkis = mean(Tm),
             Tm_mediana = median(Tm),
@@ -56,10 +63,10 @@ lizocimai_stat_WT_T <- lizocimai_pagr %>%
             suma = n(),
             turi_pdb = sum(!is.na(pdb)))
 
-lizocimai_stat_WT_T
-
 lizocimai_stat_WT_G <- lizocimai_pagr %>% 
-  filter(!is.na(ddeltaG)) %>%
+  filter(!is.na(ddeltaG)) 
+
+lizocimai_stat_WT_G %>%
   group_by(WT) %>%
   summarise(G_vidurkis = mean(ddeltaG),
             G_mediana = median(ddeltaG),
@@ -68,10 +75,10 @@ lizocimai_stat_WT_G <- lizocimai_pagr %>%
             suma = n(),
             turi_pdb = sum(!is.na(pdb)))
 
-lizocimai_stat_WT_G
-
 lizocimai_stat_WT_pH <- lizocimai_pagr %>% 
-  filter(!is.na(pH)) %>%
+  filter(!is.na(pH)) 
+
+lizocimai_stat_WT_pH %>%
   group_by(WT) %>%
   summarise(pH_vidurkis = mean(pH),
             pH_mediana = median(pH),
@@ -79,34 +86,70 @@ lizocimai_stat_WT_pH <- lizocimai_pagr %>%
             q3 = quantile(pH, 0.75),
             suma = n(),
             turi_pdb = sum(!is.na(pdb)))
-
-lizocimai_stat_WT_pH
+```
+## Grafikai
+Lyginama temperatura wt ir wt*
+```{r}
+ggplot(lizocimai_stat_WT_T) +
+ aes(x = WT, y = Tm) +
+ geom_boxplot(fill = "green") +
+ theme_minimal()
 ```
 
+Lyginama deltaG wt ir wt*:
+```{r}
+ggplot(lizocimai_stat_WT_G) +
+ aes(x = WT, y = ddeltaG) +
+ geom_boxplot(fill = "#0c4c8a") +
+ theme_minimal()
+```
+
+Lyginami pH wt ir wt*:
+```{r}
+ggplot(lizocimai_stat_WT_pH) +
+ aes(x = WT, y = pH) +
+ geom_boxplot(fill = "#ef562d") +
+ theme_minimal()
+
+```
 # Skaiciuojamos statistikos isskirscius pagal pH
 
-Paziurimi 33 ir 66 kvantiliai:
+Patikrinami klasteriai:
 ```{r}
-lizocimai_pagr %>% 
-  filter(!is.na(pH)) %>%
-  summarise(pH_q33 = quantile(pH, 0.33),
-            pH_q66 = quantile(pH, 0.66))
+ggplot(lizocimai_pagr) +
+ aes(x = pH, y = Tm) +
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
 ```
 
-Priskiriama grupe:
+Priskiriama grupe (is grafiko matome, kad yra 4 klasteriai):
 ```{r}
 lizocimai_pagr <- lizocimai_pagr %>% 
-  mutate(pH_grupe = as.factor(if_else(pH < 3, "mazas", 
-                            if_else(pH < 5.4, "vidutinis", "didelis")))) %>% 
-  mutate(pH_grupe = fct_relevel(pH_grupe, "mazas", "vidutinis", "didelis"))
+  mutate(pH_grupe = as.factor(if_else(pH < 2.5, "pirma", 
+                              if_else(pH < 4, "antra", 
+                              if_else(pH < 6.1, "trecia", "ketvirta"))))) %>% 
+  mutate(pH_grupe = fct_relevel(pH_grupe, "pirma", "antra", "trecia", "ketvirta"))
 
 head(lizocimai_pagr)
 ```
 
+Klasteriai pazymimi spalvomis:
+```{r}
+ggplot(lizocimai_pagr) +
+ aes(x = pH, y = Tm, colour = pH_grupe) +
+ geom_point(size = 1L) +
+ scale_color_hue() +
+ theme_minimal()
+```
+
+
+
 Isskirscius pagal pH gruper apskaiciuojamos statistikos grupems:
 ```{r}
 lizocimai_stat_ph_T <- lizocimai_pagr %>% 
-  filter(!is.na(Tm)) %>%
+  filter(!is.na(Tm)) 
+
+lizocimai_stat_ph_T %>%
   group_by(pH_grupe) %>%
   summarise(Tm_vidurkis = mean(Tm),
             Tm_mediana = median(Tm),
@@ -115,10 +158,10 @@ lizocimai_stat_ph_T <- lizocimai_pagr %>%
             suma = n(),
             turi_pdb = sum(!is.na(pdb)))
 
-lizocimai_stat_ph_T
-
 lizocimai_stat_ph_G <- lizocimai_pagr %>% 
-  filter(!is.na(ddeltaG)) %>%
+  filter(!is.na(ddeltaG)) 
+
+lizocimai_stat_ph_G %>%
   group_by(pH_grupe) %>%
   summarise(G_vidurkis = mean(ddeltaG),
             G_mediana = median(ddeltaG),
@@ -126,11 +169,26 @@ lizocimai_stat_ph_G <- lizocimai_pagr %>%
             q3 = quantile(ddeltaG, 0.75),
             suma = n(),
             turi_pdb = sum(!is.na(pdb)))
-
-lizocimai_stat_ph_G
 ```
 
+## Grafikai
 
+Lyginamos temperaturos skirtingose pH grupese:
+```{r}
+ggplot(lizocimai_stat_ph_T) +
+ aes(x = pH_grupe, y = Tm, fill = pH_grupe) +
+ geom_boxplot() +
+ scale_fill_hue() +
+ theme_minimal()
 
+```
 
+Lyginama deltaG skirtingose pH grupese:
+```{r}
+ggplot(lizocimai_stat_ph_G) +
+ aes(x = pH_grupe, y = ddeltaG, fill = pH_grupe) +
+ geom_boxplot() +
+ scale_fill_hue() +
+ theme_minimal()
 
+```
