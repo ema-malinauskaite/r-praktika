@@ -56,8 +56,8 @@ visu_baltymu_kont_sumu_skirtumai <- rbind(visu_baltymu_kont_sumu_skirtumai, wt_i
 lizocimo_kontaktai = NULL
  }
 termo_skirtumai <- pdb_termo_lent %>%
-  select(-WT) %>% 
-  transpose(make.names = "pdb")
+  select(-WT, -pdb)# %>% 
+  #transpose(make.names = "pdb")
 
 return(list(visu_baltymu_kont_sumu_skirtumai = as.matrix(visu_baltymu_kont_sumu_skirtumai),termo_skirtumai = as.matrix(termo_skirtumai)))
 }
