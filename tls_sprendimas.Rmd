@@ -16,7 +16,7 @@ library("pracma")
 ```
 
 # Tiesines lygciu sistemos sprendimas
-## Duomenys imant wt ir wtx kartu
+## Imant tik 229 baltymus
 Duomenu ikelimas:
 ```{r}
 lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
@@ -26,29 +26,26 @@ wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
 ```
 
 ```{r}
-pdb_tm <- lizocimai_pagr %>% 
+pdb_tm_229 <- lizocimai_pagr %>% 
   select(pdb, deltaTm, WT) %>% 
   drop_na(pdb, deltaTm) %>% 
-  filter(pdb != "2LZM" & pdb != "1L63")
+  filter(pdb != "2LZM" & pdb != "1L63") %>% 
+  head(229)
 
-pdb_tm
+pdb_tm_229
 ```
 
 Matricu sukurimas:
 ```{r message=FALSE}
-matricu_lenteles_wtx_ir_wt <- fun_kont_sum_ir_temp_skirtumams(pdb_tm, wtx_platusis = wtx_1L63_platusis, wt_platusis = wt_2LZM_platusis, nuline_lentele_platusis)
-```
-
-```{r}
-matricos_A_perziura <- matricu_lenteles_wtx_ir_wt$visu_baltymu_kont_sumu_skirtumai %>% data.frame()
+matricu_lenteles_229 <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_229, wtx_platusis = wtx_1L63_platusis, wt_platusis = wt_2LZM_platusis, nuline_lentele_platusis)
 ```
 
 ### Sprendimas
 
 Reiksmiu priskyrimas:
 ```{r}
-A <- matricu_lenteles_wtx_ir_wt$visu_baltymu_kont_sumu_skirtumai %>% .[, -225] #.[-c(230:328), -225]
-b <- c(matricu_lenteles_wtx_ir_wt$termo_skirtumai) # %>% .[-c(230:328)]
+A <- matricu_lenteles_229$visu_baltymu_kont_sumu_skirtumai %>% .[, -225] #.[-c(230:328), -225]
+b <- c(matricu_lenteles_229$termo_skirtumai) # %>% .[-c(230:328)]
 dim(A)
 ```
 
@@ -68,15 +65,109 @@ Patikrinimas:
 ```
 
 Sprendimas:
-PADARYTI KITA KARTA KAD BUTU KODAS SU SOLVE BE QR, TY KAD SKAICIUOTU TIK IS 29 NES O JEIGU REIKES PAVYZDZIU
 ```{r}
-#tls_sprendimas_wt_ir_wtx <- solve(A, b)
-tls_sprendimas_wt_ir_wtx_qr <- pracma::qrSolve(A, b)
+tls_sprendimas_229 <- solve(A, b)
 ```
 
 ```{r}
-tls_sprendimas_wt_ir_wtx_df <- tls_sprendimas_wt_ir_wtx %>% data.frame() 
-tls_sprendimas_wt_ir_wtx_df
+tls_sprendimas_229_df <- tls_sprendimas_229 %>% data.frame() 
+tls_sprendimas_229_df
+
+# data.table::fwrite(
+#   tls_sprendimas_wt_ir_wtx_df,
+#   file = "./???",
+#   sep = "\t",
+#   dec = ".",
+#   row.names  = FALSE,
+#   col.names  = TRUE,
+#   na = ""
+# )
+```
+
+### Aprasomoji rezultatu statistika
+```{r}
+tls_sprendimas_229_df_pasalinus <- tls_sprendimas_229_df %>% 
+  filter(. != min(tls_sprendimas_229_df)) 
+
+tls_sprendimas_229_df %>%  summary()
+tls_sprendimas_229_df_pasalinus %>% summary()
+
+tls_sprendimas_229_df %>% as.data.table(keep.rownames = "pavadinimas") %>% 
+  filter(. == min(.), .preserve = TRUE)
+
+sort(tls_sprendimas_229) %>% data.frame()
+
+```
+
+```{r}
+ggplot(tls_sprendimas_229_df_pasalinus) +
+ aes(x = .) +
+ geom_histogram(bins = 30L, fill = "#0c4c8a") +
+ theme_minimal()
+```
+
+
+## Duomenys imant visus baltymus
+Duomenu ikelimas:
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+wtx_1L63_platusis <- readr::read_rds("./data/wtx_1L63_platusis.rds")
+wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
+```
+
+```{r}
+pdb_tm_visi_baltymai <- lizocimai_pagr %>% 
+  select(pdb, deltaTm, WT) %>% 
+  drop_na(pdb, deltaTm) %>% 
+  filter(pdb != "2LZM" & pdb != "1L63")
+
+pdb_tm_visi_baltymai
+```
+
+Matricu sukurimas:
+```{r message=FALSE}
+matricu_lenteles_visi_baltymai <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_visi_baltymai, wtx_platusis = wtx_1L63_platusis, wt_platusis = wt_2LZM_platusis, nuline_lentele_platusis)
+```
+
+### Sprendimas
+
+Reiksmiu priskyrimas:
+```{r}
+A <- matricu_lenteles_visi_baltymai$visu_baltymu_kont_sumu_skirtumai %>% .[, -225] #.[-c(230:328), -225]
+b <- c(matricu_lenteles_visi_baltymai$termo_skirtumai) # %>% .[-c(230:328)]
+dim(A)
+```
+
+Surasti netinkamiems:
+```{r}
+# rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+# rankifremoved
+# which(rankifremoved == max(rankifremoved))
+```
+
+Patikrinimas:
+(Echelono forma, supaprastinta, jeigu paskutine eilute yra ne nuliai, ir turi sprendini, viskas ok)
+```{r}
+# echelon <- echelon(A, b)
+# echelon_df <- data.frame(echelon) %>% tail()
+# echelon_df
+```
+
+Sprendimas:
+```{r}
+#tls_sprendimas_wt_ir_wtx <- solve(A, b)
+tls_sprendimas_visi_baltymai <- pracma::qrSolve(A, b)
+```
+
+```{r}
+pavadinimai <- nuline_lentele_platusis %>%
+  transpose(keep.names = "kontakto_tipas") %>% 
+  slice(-225) %>% 
+  select(-V1)
+
+tls_sprendimas_visi_baltymai_df <- cbind(pavadinimai, data.frame(tls_sprendimas_visi_baltymai))
+tls_sprendimas_visi_baltymai_df 
 
 # data.table::fwrite(
 #   tls_sprendimas_wt_ir_wtx_df,
@@ -89,33 +180,49 @@ tls_sprendimas_wt_ir_wtx_df
 # )
 ```
 
-## Aprasomoji rezultatu statistika
+### Aprasomoji rezultatu statistika
 ```{r}
-tls_sprendimas_wt_ir_wtx_df_pasalinus <- tls_sprendimas_wt_ir_wtx_df %>% 
-  filter(. != min(tls_sprendimas_wt_ir_wtx_df)) 
+tls_sprendimas_visi_baltymai_df %>%  summary()
 
-tls_sprendimas_wt_ir_wtx_df %>%  summary()
-tls_sprendimas_wt_ir_wtx_df_pasalinus %>% summary()
+arrange(tls_sprendimas_visi_baltymai_df, tls_sprendimas_visi_baltymai) 
 
-tls_sprendimas_wt_ir_wtx_df %>% as.data.table(keep.rownames = "pavadinimas") %>% 
-  filter(. == min(.), .preserve = TRUE)
+tls_sprendimas_visi_baltymai_df %>% 
+  filter(str_detect(kontakto_tipas, "\\.")) %>% 
+  arrange(tls_sprendimas_visi_baltymai)
 
-sort(tls_sprendimas_wt_ir_wtx) %>% data.frame()
+#Temperaturos skirtumo reiksme teigiama - sumazejes antro baltymo lyginant su pirmuoju stabilumas, neigiama - padidejes stabilumas
+
+#Jeigu antrajame baltyme padidideja atitinkamo kontakto plotu suma (padaugeja kontaktu), plotu skirtumas bus neigiamas, dauginant ji is neigiamo koeficiento, reiksme bus teigiama, todel temperaturu skirtumas dides, o stabilumas mazes. Su teigiamais koeficientais atvirksciai.
+
+#Isvada, kad neigiami koeficientai stabiluma didina mazejant atitinkamo kontakto sumai (mazina stabiluma daugejant kontaktu) lyginant su pirmu baltymu, o tegiami koeficientai stabiluma didina didejant atitinkamo kontakto tipo sumai 
 
 ```
 
-Destytojo pavyzdys:
-(naudojami indeksai, tada su jais dirbama toliau, reikalingos matricos)
 ```{r}
-ids=order(tls_sprendimas_wt_ir_wtx);
-which(tls_sprendimas_wt_ir_wtx>0);
-```
-
-
-```{r}
-ggplot(tls_sprendimas_wt_ir_wtx_df_pasalinus) +
+ggplot(tls_sprendimas_visi_baltymai_df) +
  aes(x = .) +
  geom_histogram(bins = 30L, fill = "#0c4c8a") +
  theme_minimal()
 ```
 
+### Grafinis atvaizdavimas
+
+temperaturos skirtumu apskaiciavimas turint koeficientus
+```{r}
+
+apskaiciuotos_temperaturos <- 
+  matricu_lenteles_visi_baltymai$visu_baltymu_kont_sumu_skirtumai[, -225] %*% tls_sprendimas_visi_baltymai
+
+apskaiciuotos_temperaturos_df <- cbind(pdb_tm_visi_baltymai, data.frame(apskaiciuotos_temperaturos)) %>% 
+  select(-WT)
+
+ggplot(apskaiciuotos_temperaturos_df) +
+ aes(x = deltaTm, y = apskaiciuotos_temperaturos) +
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+
+apskaiciuotos_temperaturos_df %>% 
+  mutate(skirtumas = round((deltaTm- apskaiciuotos_temperaturos), digits = 3)) %>%
+  arrange(skirtumas)
+  
+```

@@ -1,0 +1,23 @@
+---
+title: "pavyzdziai"
+author: "Ema Malinauskaite"
+date: "2/24/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+#library("matlib")
+library("pracma")
+#library("Smisc")
+```
+
+Destytojo pavyzdys:
+(naudojami indeksai, tada su jais dirbama toliau, reikalingos matricos)
+```{r}
+ids=order(tls_sprendimas_wt_ir_wtx);
+which(tls_sprendimas_wt_ir_wtx>0);
+```
