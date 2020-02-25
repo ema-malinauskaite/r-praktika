@@ -1,0 +1,79 @@
+---
+title: "fun_kontaktu_sumai"
+author: "Ema Malinauskaite"
+date: "2/12/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+library("matlib")
+```
+
+V6 ir V13 - aminorugsciu tipai
+V7 ir V14 - atomo tipai
+V15 - kontakto plotas
+# fun_kontaktu_sumai
+
+```{r}
+fun_atom_kontaktu_sumai_ <- function(liz_kont)#, nul_lentele_plat) { #pirmas - kontaktu lentele, antras - nuline lentele
+
+liz_kont <- liz_kont %>%
+  mutate(V6 = recode_factor(V6,"MSE" = "MET")) %>% 
+  mutate(V13 = recode_factor(V13,"MSE" = "MET"))
+
+liz_kont_matrica_ar <- as.matrix(data.frame(ar_1 = liz_kont$V6, ar_2 = liz_kont$V13))
+surusiuoti_pavad_ar <- liz_kont_matrica_ar %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame %>% 
+  rename(ar_kontakto_tipas = ".")
+
+liz_kont_matrica_atom <- as.matrix(data.frame(atom_1 = liz_kont$V7, atom_2 = liz_kont$V14))
+surusiuoti_pavad_atom <- liz_kont_matrica_atom %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "_")
+) %>% data.frame %>% 
+  rename(atomo_kontakto_tipas = ".")
+
+kont_sumos <- cbind(liz_kont, surusiuoti_pavad_ar, surusiuoti_pavad_atom) 
+ 
+  
+  
+  
+  
+#    group_by(kontakto_tipas) %>% 
+#   summarise(kontakto_suma = sum(V15)) 
+# 
+# kont_sumos_plat <- spread(kont_sumos, kontakto_tipas, kontakto_suma)
+# 
+# sujungta <- full_join(nul_lentele_plat, kont_sumos_plat) %>% 
+#   gather() %>% 
+#   group_by(key) %>% 
+#   summarise(kontakto_suma = sum(value)) %>% 
+#   mutate_all(~replace(., is.na(.), 0)) %>% 
+#   spread(., key, kontakto_suma)
+
+return(kont_sumos)
+}
+```
+
+## Bandymas 
+
+Duomenu ikelimas:
+```{r}
+lizocimo_kontaktai <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
+# <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+
+lizocimo_kontaktai
+```
+
+```{r}
+# paruosta_lentele <- fun_kontaktu_sumai(lizocimo_kontaktai, nuline_lentele_platusis)
+# 
+# paruosta_lentele
+```
+
