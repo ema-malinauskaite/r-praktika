@@ -1,6 +1,10 @@
 {
-    "path" : "~/Desktop/praktika/r-praktika",
+    "path" : "~/Desktop/praktika/r-praktika/aminorugsciu lygyje",
     "sortOrder" : [
+        {
+            "ascending" : false,
+            "columnIndex" : 4
+        },
         {
             "ascending" : true,
             "columnIndex" : 1

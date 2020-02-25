@@ -16,64 +16,110 @@ library("matlib")
 V6 ir V13 - aminorugsciu tipai
 V7 ir V14 - atomo tipai
 V15 - kontakto plotas
-# fun_kontaktu_sumai
 
-```{r}
-fun_atom_kontaktu_sumai_ <- function(liz_kont)#, nul_lentele_plat) { #pirmas - kontaktu lentele, antras - nuline lentele
+# Grupavimo funkcija
+```{r} 
+fun_atom_kontaktu_grupavimui <- function(liz_kont) {#, nul_lentele_plat) { #pirmas - kontaktu lentele, antras - nuline lentele
 
 liz_kont <- liz_kont %>%
+  select(V6, V7, V13, V14, V15) %>% 
   mutate(V6 = recode_factor(V6,"MSE" = "MET")) %>% 
   mutate(V13 = recode_factor(V13,"MSE" = "MET"))
+  
+liz_kont$ar1_atom1 <- with(liz_kont, paste0(V6,V7))
+liz_kont$ar2_atom2 <- with(liz_kont, paste0(V13,V14))
 
-liz_kont_matrica_ar <- as.matrix(data.frame(ar_1 = liz_kont$V6, ar_2 = liz_kont$V13))
-surusiuoti_pavad_ar <- liz_kont_matrica_ar %>% 
+# liz_kont <- liz_kont %>% 
+#   mutate(ar2_atom2 = recode_factor(ar2_atom2,".-." = "solvent"))
+
+liz_kont_matrica <- as.matrix(data.frame(ar1_atom1 = liz_kont$ar1_atom1, ar2_atom2 = liz_kont$ar2_atom2))
+
+surusiuoti_pavad <- liz_kont_matrica %>%
   split(., row(.)) %>% sapply(
-  . %>% sort %>% paste(collapse = "_")
-) %>% data.frame %>% 
-  rename(ar_kontakto_tipas = ".")
+  . %>% sort %>% paste(collapse = "-")
+) %>% data.frame
 
-liz_kont_matrica_atom <- as.matrix(data.frame(atom_1 = liz_kont$V7, atom_2 = liz_kont$V14))
-surusiuoti_pavad_atom <- liz_kont_matrica_atom %>% 
-  split(., row(.)) %>% sapply(
-  . %>% sort %>% paste(collapse = "_")
-) %>% data.frame %>% 
-  rename(atomo_kontakto_tipas = ".")
+kont_sumos <- cbind(liz_kont, surusiuoti_pavad) %>%
+  rename(kontakto_tipas = ".")
 
-kont_sumos <- cbind(liz_kont, surusiuoti_pavad_ar, surusiuoti_pavad_atom) 
- 
-  
-  
-  
-  
-#    group_by(kontakto_tipas) %>% 
-#   summarise(kontakto_suma = sum(V15)) 
-# 
-# kont_sumos_plat <- spread(kont_sumos, kontakto_tipas, kontakto_suma)
-# 
-# sujungta <- full_join(nul_lentele_plat, kont_sumos_plat) %>% 
-#   gather() %>% 
-#   group_by(key) %>% 
-#   summarise(kontakto_suma = sum(value)) %>% 
-#   mutate_all(~replace(., is.na(.), 0)) %>% 
-#   spread(., key, kontakto_suma)
+kont_sumos <- kont_sumos %>% 
+  group_by(kontakto_tipas) %>%
+  summarise(kontakto_suma = sum(V15))
+}
+```
+## Bandymas 
+Duomenu ikelimas:
+```{r}
+lizocimo_kontaktai_1L63 <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
+# <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+```
 
-return(kont_sumos)
+Skaiciavimai:
+```{r}
+paruosta_lentele_1L63 <- fun_atom_kontaktu_grupavimui(lizocimo_kontaktai_1L63)
+paruosta_lentele_1L63
+```
+
+## Atomu tipu skaiciavimas
+```{r}
+pdb_sarasas <- readr::read_rds("./data/pro_344_sm_suppinfo.rds") %>%
+  select(pdb) %>%
+  drop_na()
+```
+
+1 ar
+```{r}
+suskaiciuoti_atomu_tipai_visiems_baltymams <- NULL
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+atomu_tipu_skaicius <- lizocimo_kontaktai %>% 
+  select(V7, V15) %>% 
+  group_by(V7) %>% 
+  summarise(suma = sum(V15)) %>% 
+  count()
+
+suskaiciuoti_atomu_tipai_visiems_baltymams <- rbind(suskaiciuoti_atomu_tipai_visiems_baltymams, atomu_tipu_skaicius)
+lizocimo_kontaktai = NULL
 }
 ```
 
-## Bandymas 
-
-Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
-# <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+suskaiciuoti_atomu_tipai_visiems_baltymams %>% summary()
+```
 
-lizocimo_kontaktai
+2 ar:
+```{r}
+suskaiciuoti_atomu_tipai_visiems_baltymams2 <- NULL
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+atomu_tipu_skaicius <- lizocimo_kontaktai %>% 
+  select(V14, V15) %>% 
+  group_by(V14) %>% 
+  summarise(suma = sum(V15)) %>% 
+  count()
+
+suskaiciuoti_atomu_tipai_visiems_baltymams2 <- rbind(suskaiciuoti_atomu_tipai_visiems_baltymams2, atomu_tipu_skaicius)
+lizocimo_kontaktai = NULL
+}
 ```
 
 ```{r}
-# paruosta_lentele <- fun_kontaktu_sumai(lizocimo_kontaktai, nuline_lentele_platusis)
-# 
-# paruosta_lentele
+suskaiciuoti_atomu_tipai_visiems_baltymams2 %>% summary()
 ```
 
+pagal viska:
+```{r}
+suskaiciuoti_kontaktu_tipai_visiems_baltymams <- NULL
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+kontaktu_tipu_skaicius <- fun_atom_kontaktu_grupavimui(lizocimo_kontaktai) 
+
+suskaiciuoti_kontaktu_tipai_visiems_baltymams <- rbind(suskaiciuoti_kontaktu_tipai_visiems_baltymams, nrow(kontaktu_tipu_skaicius))
+lizocimo_kontaktai = NULL
+}
+suskaiciuoti_kontaktu_tipai_visiems_baltymams
+```
+
+```{r}
+summary(suskaiciuoti_kontaktu_tipai_visiems_baltymams)
+```
