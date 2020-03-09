@@ -22,7 +22,6 @@ liz_kont <- liz_kont %>%
   mutate(V6 = recode_factor(V6,"MSE" = "MET")) %>% 
   mutate(V13 = recode_factor(V13,"MSE" = "MET"))
 
-
 liz_kont_matrica <- as.matrix(data.frame(ar_1 = liz_kont$V6, ar_2 = liz_kont$V13))
 
 surusiuoti_pavad <- liz_kont_matrica %>% 
@@ -52,8 +51,8 @@ return(sujungta)
 
 Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai <- data.table::fread("./lizocimai/1L63.contacts.interresidue.table")
-nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
+lizocimo_kontaktai <- data.table::fread("../lizocimai/1L63.contacts.interresidue.table")
+nuline_lentele_platusis <- readr::read_rds("../data/nuline_lentele_platusis.rds")
 ```
 
 ```{r}

@@ -1,0 +1,151 @@
+---
+title: "Untitled"
+author: "Ema Malinauskaite"
+date: "2/13/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("tidyr")
+```
+
+## 1ar
+1 ar bandoma sudaryti bendra lentele atomu pavadinimu kad butu galima paziureti kodel skiriasi:
+```{r, message = FALSE}
+lizocimo_kontaktai_pvz <- data.table::fread(paste("./lizocimai/","2LZM",".contacts.interatom.table", sep = ""))
+atomu_tipu_lentele <-  lizocimo_kontaktai_pvz %>% 
+  select(V7, V15) %>% 
+  group_by(V7) %>% 
+  summarise(suma = sum(V15)) %>% 
+  arrange(V7) %>% 
+  transpose(make.names = "V7")
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+atomu_tipu_skaicius <- lizocimo_kontaktai %>% 
+  select(V7, V15) %>% 
+  group_by(V7) %>% 
+  summarise(suma = sum(V15)) %>% 
+  arrange(V7) %>% 
+  transpose(make.names = "V7")
+
+atomu_tipu_lentele <- full_join(atomu_tipu_lentele, atomu_tipu_skaicius) 
+  # gather() %>%
+  # group_by(key) 
+ # summarise(kontakto_suma = sum(value)) %>%
+#  mutate_all(~replace(., is.na(.), 0)) %>%
+ # spread(., key, kontakto_suma)
+
+# atomu_tipu_lentele <- rbind(atomu_tipu_lentele, atomu_tipu_skaicius)
+lizocimo_kontaktai = NULL
+}
+```
+
+```{r}
+sutvarkyta <- atomu_tipu_lentele %>%
+  DescTools::CountCompCases() %>%
+  print(digits = 1) 
+``` 
+Tik OXT zymejimo nera grupavimo failuose is tu, kurie yra ne visuose baltymuose.
+
+1ar
+Bandoma uzfiksuoti kurie baltymai turi maksimalu atomu tipu skaiciu
+```{r}
+suskaiciuoti_atomu_tipai_visiems_baltymams <- NULL
+max_baltymai_1 <- NULL
+min_baltymai_1 <- NULL
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+atomu_tipu_skaicius <- lizocimo_kontaktai %>% 
+  select(V7, V15) %>% 
+  group_by(V7) %>% 
+  summarise(suma = sum(V15)) %>% 
+  count()
+
+if(atomu_tipu_skaicius == 37) {
+  max_baltymai_1 <- rbind(max_baltymai_1, data.frame(i))
+}
+
+if(atomu_tipu_skaicius == 34) {
+  min_baltymai_1 <- rbind(min_baltymai_1, data.frame(i))
+}
+
+suskaiciuoti_atomu_tipai_visiems_baltymams <- rbind(suskaiciuoti_atomu_tipai_visiems_baltymams, atomu_tipu_skaicius)
+lizocimo_kontaktai = NULL
+}
+```
+
+```{r}
+max_baltymai_1
+min_baltymai_1
+```
+
+# 2 ar
+
+```{r, message = FALSE}
+lizocimo_kontaktai_pvz2 <- data.table::fread(paste("./lizocimai/","3C7Z",".contacts.interatom.table", sep = ""))
+atomu_tipu_lentele2 <-  lizocimo_kontaktai_pvz2 %>% 
+  select(V14, V15) %>% 
+  group_by(V14) %>% 
+  summarise(suma = sum(V15)) %>% 
+  arrange(V14) %>% 
+  transpose(make.names = "V14")
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+atomu_tipu_skaicius <- lizocimo_kontaktai %>% 
+  select(V14, V15) %>% 
+  group_by(V14) %>% 
+  summarise(suma = sum(V15)) %>% 
+  arrange(V14) %>% 
+  transpose(make.names = "V14")
+
+atomu_tipu_lentele2 <- full_join(atomu_tipu_lentele2, atomu_tipu_skaicius) 
+  # gather() %>%
+  # group_by(key) 
+ # summarise(kontakto_suma = sum(value)) %>%
+#  mutate_all(~replace(., is.na(.), 0)) %>%
+ # spread(., key, kontakto_suma)
+
+# atomu_tipu_lentele <- rbind(atomu_tipu_lentele, atomu_tipu_skaicius)
+lizocimo_kontaktai = NULL
+}
+```
+
+```{r}
+sutvarkyta2 <- atomu_tipu_lentele2 %>%
+  DescTools::CountCompCases() %>%
+  print(digits = 1) 
+```
+2ar suzinoti kokie baltymai min max
+```{r}
+suskaiciuoti_atomu_tipai_visiems_baltymams <- NULL
+max_baltymai_2 <- NULL
+min_baltymai_2 <- NULL
+
+for (i in pdb_sarasas$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+atomu_tipu_skaicius <- lizocimo_kontaktai %>% 
+  select(V14, V15) %>% 
+  group_by(V14) %>% 
+  summarise(suma = sum(V15)) %>% 
+  count()
+
+if(atomu_tipu_skaicius == 38) {
+  max_baltymai_2 <- rbind(max_baltymai_2, data.frame(i))
+}
+
+if(atomu_tipu_skaicius == 35) {
+  min_baltymai_2 <- rbind(min_baltymai_2, data.frame(i))
+}
+
+suskaiciuoti_atomu_tipai_visiems_baltymams <- rbind(suskaiciuoti_atomu_tipai_visiems_baltymams, atomu_tipu_skaicius)
+lizocimo_kontaktai = NULL
+}
+```
+
+```{r}
+max_baltymai_2
+min_baltymai_2
+```
+

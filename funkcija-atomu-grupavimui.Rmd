@@ -1,19 +1,15 @@
 ---
-title: "Untitled"
+title: "fun_atomu_grupavimui"
 author: "Ema Malinauskaite"
-date: "2/13/2020"
+date: "2/12/2020"
 output: html_document
 ---
 
 ```{r include=FALSE}
 library("tidyverse")
 library("data.table")
+library("compareDF")
 library("tidyr")
+library("matlib")
 ```
 
-
-```{r}
-
-
-
-```

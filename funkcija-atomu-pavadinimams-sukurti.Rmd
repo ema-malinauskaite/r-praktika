@@ -18,45 +18,33 @@ V7 ir V14 - atomo tipai
 V15 - kontakto plotas
 
 # Grupavimo funkcija
+Si funkcija yra beveik tokia pati, kaip ir ta, kuri yra skirta tik kontaktams tarp AR skaiciuoti, tik sioje funkcijoje pasalinta sumavimo ir bendro pavadinimo (kontakto tipo) dalis, t.y., si funkcija skirta tik pavadinti atomams (pvz. METCA) pilnu pavadinimu (tokiu kokio reikia norit grupuoti atomus pagal grupavimo faila). Ta dalis, kur kontakto tipas priskiriamas isdescius eiluteje esancius atomus pagal abecele bus naudojama tada, kai atomams bus priskirta grupe is grupavimo failo (kontakto tipas bus priskirtas pagal grupes pavadinimus, ne pagal atomo tipa)
 ```{r} 
-fun_atom_kontaktu_grupavimui <- function(liz_kont) {#, nul_lentele_plat) { #pirmas - kontaktu lentele, antras - nuline lentele
+fun_atomu_pavadinimams <- function(liz_kont) {
 
-liz_kont <- liz_kont %>%
+liz_kont_atom_pavadinimai <- liz_kont %>%
   select(V6, V7, V13, V14, V15) %>% 
   mutate(V6 = recode_factor(V6,"MSE" = "MET")) %>% 
   mutate(V13 = recode_factor(V13,"MSE" = "MET"))
   
-liz_kont$ar1_atom1 <- with(liz_kont, paste0(V6,V7))
-liz_kont$ar2_atom2 <- with(liz_kont, paste0(V13,V14))
+liz_kont_atom_pavadinimai$ar1_atom1 <- with(liz_kont_atom_pavadinimai, paste0(V6,V7))
+liz_kont_atom_pavadinimai$ar2_atom2 <- with(liz_kont_atom_pavadinimai, paste0(V13,V14))
 
-# liz_kont <- liz_kont %>% 
-#   mutate(ar2_atom2 = recode_factor(ar2_atom2,".-." = "solvent"))
+return(liz_kont_atom_pavadinimai)
 
-liz_kont_matrica <- as.matrix(data.frame(ar1_atom1 = liz_kont$ar1_atom1, ar2_atom2 = liz_kont$ar2_atom2))
-
-surusiuoti_pavad <- liz_kont_matrica %>%
-  split(., row(.)) %>% sapply(
-  . %>% sort %>% paste(collapse = "-")
-) %>% data.frame
-
-kont_sumos <- cbind(liz_kont, surusiuoti_pavad) %>%
-  rename(kontakto_tipas = ".")
-
-kont_sumos <- kont_sumos %>% 
-  group_by(kontakto_tipas) %>%
-  summarise(kontakto_suma = sum(V15))
 }
 ```
+
 ## Bandymas 
 Duomenu ikelimas:
 ```{r}
-lizocimo_kontaktai_1L63 <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
+lizocimo_atom_kontaktai_1L63 <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
 # <- readr::read_rds("./data/nuline_lentele_platusis.rds")
 ```
 
 Skaiciavimai:
 ```{r}
-paruosta_lentele_1L63 <- fun_atom_kontaktu_grupavimui(lizocimo_kontaktai_1L63)
+paruosta_lentele_1L63 <- fun_atomu_pavadinimams(lizocimo_atom_kontaktai_1L63)
 paruosta_lentele_1L63
 ```
 
@@ -64,10 +52,10 @@ paruosta_lentele_1L63
 ```{r}
 pdb_sarasas <- readr::read_rds("./data/pro_344_sm_suppinfo.rds") %>%
   select(pdb) %>%
-  drop_na()
+  drop_na() 
 ```
 
-1 ar
+### 1 ar atomo tipu skaicius
 ```{r}
 suskaiciuoti_atomu_tipai_visiems_baltymams <- NULL
 for (i in pdb_sarasas$pdb) {
@@ -87,7 +75,7 @@ lizocimo_kontaktai = NULL
 suskaiciuoti_atomu_tipai_visiems_baltymams %>% summary()
 ```
 
-2 ar:
+### 2 ar atomo tipu skaicius
 ```{r}
 suskaiciuoti_atomu_tipai_visiems_baltymams2 <- NULL
 for (i in pdb_sarasas$pdb) {
@@ -107,14 +95,29 @@ lizocimo_kontaktai = NULL
 suskaiciuoti_atomu_tipai_visiems_baltymams2 %>% summary()
 ```
 
-pagal viska:
+### Pagal viska
 ```{r}
 suskaiciuoti_kontaktu_tipai_visiems_baltymams <- NULL
 for (i in pdb_sarasas$pdb) {
 lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
-kontaktu_tipu_skaicius <- fun_atom_kontaktu_grupavimui(lizocimo_kontaktai) 
+liz_kont <- fun_atomu_pavadinimams(lizocimo_kontaktai) 
 
-suskaiciuoti_kontaktu_tipai_visiems_baltymams <- rbind(suskaiciuoti_kontaktu_tipai_visiems_baltymams, nrow(kontaktu_tipu_skaicius))
+#----
+liz_kont_matrica <- as.matrix(data.frame(ar1_atom1 = liz_kont$ar1_atom1, ar2_atom2 = liz_kont$ar2_atom2))
+surusiuoti_pavad <- liz_kont_matrica %>%
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "-")
+) %>% data.frame
+
+kont_sumos <- cbind(liz_kont, surusiuoti_pavad) %>%
+  rename(kontakto_tipas = ".")
+
+kont_sumos <- kont_sumos %>%
+  group_by(kontakto_tipas) %>%
+  summarise(kontakto_suma = sum(V15))
+#----
+
+suskaiciuoti_kontaktu_tipai_visiems_baltymams <- rbind(suskaiciuoti_kontaktu_tipai_visiems_baltymams, nrow(kont_sumos))
 lizocimo_kontaktai = NULL
 }
 suskaiciuoti_kontaktu_tipai_visiems_baltymams

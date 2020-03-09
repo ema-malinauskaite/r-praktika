@@ -13,16 +13,17 @@ library("tidyr")
 #library("matlib")
 library("pracma")
 #library("Smisc")
+library("readr")
 ```
 
 # Tiesines lygciu sistemos sprendimas
 ## Imant tik 229 baltymus
 Duomenu ikelimas:
 ```{r}
-lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
-nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
-wtx_1L63_platusis <- readr::read_rds("./data/wtx_1L63_platusis.rds")
-wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
+lizocimai_pagr <- readr::read_rds("../data/pro_344_sm_suppinfo.rds")
+nuline_lentele_platusis <- readr::read_rds("../data/nuline_lentele_platusis.rds")
+wtx_1L63_platusis <- readr::read_rds("../data/wtx_1L63_platusis.rds")
+wt_2LZM_platusis <- readr::read_rds("../data/wt_2LZM_platusis.rds")
 ```
 
 ```{r}
@@ -110,10 +111,10 @@ ggplot(tls_sprendimas_229_df_pasalinus) +
 ## Duomenys imant visus baltymus
 Duomenu ikelimas:
 ```{r}
-lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
-nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
-wtx_1L63_platusis <- readr::read_rds("./data/wtx_1L63_platusis.rds")
-wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
+lizocimai_pagr <- readr::read_rds("../data/pro_344_sm_suppinfo.rds")
+nuline_lentele_platusis <- readr::read_rds("../data/nuline_lentele_platusis.rds")
+wtx_1L63_platusis <- readr::read_rds("../data/wtx_1L63_platusis.rds")
+wt_2LZM_platusis <- readr::read_rds("../data/wt_2LZM_platusis.rds")
 ```
 
 ```{r}
@@ -197,26 +198,25 @@ tls_sprendimas_visi_baltymai_df %>%
 #Isvada, kad neigiami koeficientai stabiluma didina mazejant atitinkamo kontakto sumai (mazina stabiluma daugejant kontaktu) lyginant su pirmu baltymu, o tegiami koeficientai stabiluma didina didejant atitinkamo kontakto tipo sumai 
 
 ```
+### Grafinis atvaizdavimas
 
+Apskaiciuotu koeficientu pasiskirstymas
 ```{r}
 ggplot(tls_sprendimas_visi_baltymai_df) +
- aes(x = .) +
+ aes(x = tls_sprendimas_visi_baltymai) +
  geom_histogram(bins = 30L, fill = "#0c4c8a") +
  theme_minimal()
 ```
 
-### Grafinis atvaizdavimas
-
-temperaturos skirtumu apskaiciavimas turint koeficientus
+temperaturos skirtumu apskaiciavimas turint koeficientus ir qq grafikas
 ```{r}
-
 apskaiciuotos_temperaturos <- 
   matricu_lenteles_visi_baltymai$visu_baltymu_kont_sumu_skirtumai[, -225] %*% tls_sprendimas_visi_baltymai
 
-apskaiciuotos_temperaturos_df <- cbind(pdb_tm_visi_baltymai, data.frame(apskaiciuotos_temperaturos)) %>% 
+apskaiciuotos_ir_teorines_temperaturos_df <- cbind(pdb_tm_visi_baltymai, data.frame(apskaiciuotos_temperaturos)) %>% 
   select(-WT)
 
-ggplot(apskaiciuotos_temperaturos_df) +
+ggplot(apskaiciuotos_ir_teorines_temperaturos_df) +
  aes(x = deltaTm, y = apskaiciuotos_temperaturos) +
  geom_point(size = 1L, colour = "#0c4c8a") +
  theme_minimal()
@@ -226,3 +226,6 @@ apskaiciuotos_temperaturos_df %>%
   arrange(skirtumas)
   
 ```
+
+
+

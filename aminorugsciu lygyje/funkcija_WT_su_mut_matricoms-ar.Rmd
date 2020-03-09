@@ -32,7 +32,7 @@ visu_baltymu_kont_sumu_skirtumai <- data.frame()
 termo_skirtumai <- data.frame() #desine tiesiniu lygciu sistemos puse matricose
 #----
 for (i in pdb_termo_lent$pdb) {
-lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interresidue.table", sep = ""))
+lizocimo_kontaktai <- data.table::fread(paste("../lizocimai/",i,".contacts.interresidue.table", sep = ""))
 kontaktu_sumos <- fun_kontaktu_sumai(lizocimo_kontaktai, nul_lent_plat)
 
 viena_eilute <- pdb_termo_lent %>% 
