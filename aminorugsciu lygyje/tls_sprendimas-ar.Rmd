@@ -210,6 +210,8 @@ ggplot(tls_sprendimas_visi_baltymai_df) +
 
 temperaturos skirtumu apskaiciavimas turint koeficientus ir qq grafikas
 ```{r}
+tls_sprendimas_visi_baltymai_df %>%  summary()
+
 apskaiciuotos_temperaturos <- 
   matricu_lenteles_visi_baltymai$visu_baltymu_kont_sumu_skirtumai[, -225] %*% tls_sprendimas_visi_baltymai
 
@@ -221,7 +223,7 @@ ggplot(apskaiciuotos_ir_teorines_temperaturos_df) +
  geom_point(size = 1L, colour = "#0c4c8a") +
  theme_minimal()
 
-apskaiciuotos_temperaturos_df %>% 
+apskaiciuotos_ir_teorines_temperaturos_df %>% 
   mutate(skirtumas = round((deltaTm- apskaiciuotos_temperaturos), digits = 3)) %>%
   arrange(skirtumas)
   

@@ -66,9 +66,9 @@ return(list(visu_baltymu_kont_sumu_skirtumai = as.matrix(visu_baltymu_kont_sumu_
 ## Matricos paruosimas
 ### Paruosiamos wt ir wtx kontaktu plotu lenteles
 ```{r include=FALSE}
-nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
-wt_2LZM_platusis <- data.table::fread("./lizocimai/2LZM.contacts.interresidue.table")
-wtx_1L63_platusis <- data.table::fread("./lizocimai/1L63.contacts.interresidue.table")
+nuline_lentele_platusis <- readr::read_rds("../data/nuline_lentele_platusis.rds")
+wt_2LZM_platusis <- data.table::fread("../lizocimai/2LZM.contacts.interresidue.table")
+wtx_1L63_platusis <- data.table::fread("../lizocimai/1L63.contacts.interresidue.table")
 
 wt_2LZM_platusis <- fun_kontaktu_sumai(wt_2LZM_platusis, nuline_lentele_platusis)
 wtx_1L63_platusis <- fun_kontaktu_sumai(wtx_1L63_platusis, nuline_lentele_platusis)
@@ -82,9 +82,9 @@ Bandymui bus naudojama WT = wt temperaturu lentele, kurioje isfiltruoti tiek pdb
 
 Duomenu ikelimas:
 ```{r}
-lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
-wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
-wtx_1L63_platusis <- readr::read_rds("./data/wtx_1L63_platusis.rds")
+lizocimai_pagr <- readr::read_rds("../data/pro_344_sm_suppinfo.rds")
+wt_2LZM_platusis <- readr::read_rds("../data/wt_2LZM_platusis.rds")
+wtx_1L63_platusis <- readr::read_rds("../data/wtx_1L63_platusis.rds")
 ```
 
 ```{r}

@@ -13,7 +13,7 @@ library("tidyr")
 library("matlib")
 ```
 
-# fun_atomams_grupuoti
+## fun_atomu_grupiu_sumoms
 
 Si funkcija turetu paimti jau su padarytais pavadinimais esancia funkcija ir ciklo pagalba, tikrinti kiekvienos eilutes du paskutinius kintamuosius. Visus kintamojo pavadinimus kurie yra nuo 2 iki paskutinio stulpelio turetu keisti i failo pirmame stulpelyje esancius pavadinimus.
 Ateityje galbut si funkcija arba papildoma funkcija galetu paimti visus esancius atomu tipus ir su jais paskaiciuoti, isspresti tiesine lygciu sistema, o rezultatus issaugoti, taip butu galima tureti daug sprendiniu-koeficientu failu, su kuriias galima toliau atlikti statistikas ir tikrinti tiksluma.
@@ -21,7 +21,7 @@ Ateityje galbut si funkcija arba papildoma funkcija galetu paimti visus esancius
 Yra lyg ir du lygiai: pirmiausiai yra visa lentele su skirtingom eilutem, tai nuskaicius lentele reiktu ciklo kuris skaito ta lentele po viena eilute, tuomet reiktu ciklo cikle kad ta eilute nuskaitytu po viena stulpeli, ir tikrintu, ar faile ar_1 ar ar_2 nera jo ir pakeistu i eilutes pavadinima (j)
 
 ```{r}
-fun_atomams_grupuoti <- function(liz_kont, grupavimo_failas) { #pirmas kintamasis- kontaktu failas su pridetais pavadinimais ar1_atom1, 
+fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_failas) { #pirmas kintamasis- kontaktu failas su pridetais pavadinimais ar1_atom1, 
   
 #-------
 # atomu pervadinimas pilnesniu pavadinimu
@@ -38,7 +38,7 @@ kontaktai_atomu_pavadinimai$ar1_atom1 <- with(kontaktai_atomu_pavadinimai, paste
 kontaktai_atomu_pavadinimai$ar2_atom2 <- with(kontaktai_atomu_pavadinimai, paste0(V13,V14))
 
 #------
-# grupes priskyrimas kiekvienam atomui
+# Grupes priskyrimas kiekvienam atomui
 grupavimo_lentele <- grupavimo_failas %>% 
   mutate_all(na_if,"") %>% 
   tibble::column_to_rownames(var = "V1")
@@ -58,7 +58,7 @@ for (i in grupes_pavadinimai) {
     }
 }
 #-----
-#Isrusiuotu pavadinimu grupe1-grupe2 sudarymas ir kontakto sumu skaiciavimas pagal grupes
+# Isrusiuotu pavadinimu grupe1-grupe2 sudarymas ir kontakto sumu skaiciavimas pagal grupes
 matrica_pavadinimams <- as.matrix(data.frame(grupe1 = kontaktai_atomu_pavadinimai$grupe1, grupe2 = kontaktai_atomu_pavadinimai$grupe2))
 
 surusiuoti_pavad <- matrica_pavadinimams %>% 
@@ -72,32 +72,57 @@ atom_kont_sumos <- cbind(kontaktai_atomu_pavadinimai, surusiuoti_pavad) %>%
   summarise(kontakto_suma = sum(V15)) 
 
 #-----
-# Nulines lenteles kurimas ir jos pridejimas prie sumu lenteles
-#reik nulines lenteles, kuri sukuriama is pavadinimu failo, kad butu galima sulyginti ivairiu baltymu duomenis, joje turetu bu visi imanomi grupiu tipai kaip stulpeliu pavadinimai, o stulpelio pirmoje eiluteje nuliai
+# Nulines lenteles kurimas 
+grupavimo_lentele <- grupavimo_failas %>% 
+  mutate_all(na_if,"") %>% 
+  tibble::column_to_rownames(var = "V1")
+grupes_pavadinimai <- rownames(grupavimo_lentele) 
 
-# Kodas apacioje yra senas, jis sujungia nuline lentele su normalia lentele isrusiuotais pavadinimais, tai yr atliekama tada, kai jau suskaiciuojamos sumos ir nesidubliuoja viariantai.
-# kont_sumos_plat <- spread(kont_sumos, kontakto_tipas, kontakto_suma)
-# 
-# sujungta <- full_join(nul_lentele_plat, kont_sumos_plat) %>% 
-#   gather() %>% 
-#   group_by(key) %>% 
-#   summarise(kontakto_suma = sum(value)) %>% 
-#   mutate_all(~replace(., is.na(.), 0)) %>% 
-#   spread(., key, kontakto_suma
+nuline_lentele_atomu_grupiu_pavadinimai<- data.frame(1:(nrow(grupavimo_lentele)^2))
+
+nuline_lentele_atomu_grupiu_pavadinimai$pirma <- data.frame(rep(grupes_pavadinimai, each = nrow(grupavimo_lentele)))
+nuline_lentele_atomu_grupiu_pavadinimai$antra <- rep(grupes_pavadinimai, times = nrow(grupavimo_lentele))
+
+matrica_pavadinimams_nuline <- as.matrix(data.frame(grupe1 = nuline_lentele_atomu_grupiu_pavadinimai$pirma, grupe2 = nuline_lentele_atomu_grupiu_pavadinimai$antra))
+
+nuline_lentele_atomu <- matrica_pavadinimams_nuline %>% 
+  split(., row(.)) %>% sapply(
+  . %>% sort %>% paste(collapse = "-")
+) %>% data.frame() %>% 
+  rename("kontakto_tipas" = ".")
+
+
+nuline_lentele_atomu$nuliai <- rep(0, times = nrow(nuline_lentele_atomu)) 
+
+nuline_lentele_atomu <- nuline_lentele_atomu %>% 
+  group_by(kontakto_tipas) %>% 
+  summarise(nuliai = sum(nuliai)) %>% 
+  transpose(make.names = "kontakto_tipas")
+
+nuline_lentele_atomu
+#-----
+# Standartizavimas
+
+atom_kont_sumos <- spread(atom_kont_sumos, kontakto_tipas, kontakto_suma)
+
+sujungta <- full_join(nuline_lentele_atomu, atom_kont_sumos) %>%
+  gather() %>%
+  group_by(key) %>%
+  summarise(kontakto_suma = sum(value)) %>%
+  mutate_all(~replace(., is.na(.), 0)) %>%
+  spread(., key, kontakto_suma)
 
 #----------
-return(atom_kont_sumos)
+return(sujungta)
 }
-
 ```
 
-## Bandymas
+### Bandymas
 
 duomenu ikelimas:
 ```{r}
 lizocimo_atom_kontaktai_1L63 <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
 
-#pavyzdiniai atomu tipu duomenys
 grupavimo_failas <- data.table::fread(
   "/Users/user/Desktop/praktika/r-praktika/atom types/FTA.atoms",
   dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
@@ -106,17 +131,87 @@ grupavimo_failas <- data.table::fread(
 ```
 
 ```{r}
-rezultatai <- fun_atomams_grupuoti(lizocimo_atom_kontaktai_1L63, grupavimo_failas)
+rezultatai <- fun_atomu_grupiu_sumoms(lizocimo_atom_kontaktai_1L63, grupavimo_failas)
 rezultatai
 ```
 
 
 
+## Fun_matricu_paruosimas_atom
+
+funkcijos pataisymas lyginant su ar lygyje esancia funkcija:
+wt_platusis ir wtx_platusis turi buti sukurti pacioje funkcijoje, irasius "LMFG" ir taip parsiuntus faila, ji sutvakrkius
+
+```{r}
+fun_matricu_paruosimas_atom <- function(pdb_termo_lent, grupavimo_failas) {
+visu_baltymu_kont_sumu_skirtumai <- data.frame()
+termo_skirtumai <- data.frame() #desine tiesiniu lygciu sistemos puse matricose
+#----
+#wtx ir wt standartiniu lenteliu sukurimas
+lizocimo_kontaktai_wt <- data.table::fread("./lizocimai/2LZM.contacts.interatom.table")
+wt_atom <- fun_atomu_grupiu_sumoms(lizocimo_kontaktai_wt, grupavimo_failas)
+
+lizocimo_kontaktai_wtx <- data.table::fread("./lizocimai/1L63.contacts.interatom.table")
+wtx_atom <- fun_atomu_grupiu_sumoms(lizocimo_kontaktai_wtx, grupavimo_failas)
+#----
+for (i in pdb_termo_lent$pdb) {
+lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""))
+kontaktu_sumos_atom <- fun_atomu_grupiu_sumoms(lizocimo_kontaktai, grupavimo_failas)
+
+viena_eilute <- pdb_termo_lent %>% 
+  filter(pdb == i)
+  
+if (viena_eilute$WT == "wt") {
+  wt_ir_lizocimas_atom <- rbind(wt_atom, kontaktu_sumos_atom) %>%
+  transpose(keep.names = "kontakto_tipas") %>% 
+  mutate(kont_sumu_skirtumas = V1 - V2) %>% 
+  select(kontakto_tipas, kont_sumu_skirtumas) %>% 
+  transpose(make.names = "kontakto_tipas")
+} else {
+  wt_ir_lizocimas_atom <- rbind(wtx_atom, kontaktu_sumos_atom) %>%
+  transpose(keep.names = "kontakto_tipas") %>% 
+  mutate(kont_sumu_skirtumas = V1 - V2) %>% 
+  select(kontakto_tipas, kont_sumu_skirtumas) %>% 
+  transpose(make.names = "kontakto_tipas")
+}
+
+visu_baltymu_kont_sumu_skirtumai <- rbind(visu_baltymu_kont_sumu_skirtumai, wt_ir_lizocimas_atom)
+lizocimo_kontaktai = NULL
+ }
+termo_skirtumai <- pdb_termo_lent %>%
+  select(-WT, -pdb)
+
+return(list(visu_baltymu_kont_sumu_skirtumai_atom = as.matrix(visu_baltymu_kont_sumu_skirtumai),termo_skirtumai_atom = as.matrix(termo_skirtumai)))
+}
+
+```
+
+### Bandymas
+Duomenu ikelimas:
+```{r}
+grupavimo_failas <- data.table::fread(
+  "/Users/user/Desktop/praktika/r-praktika/atom types/FTA.atoms",
+  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
+  data.table = FALSE
+)
+
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+pdb_tm_pvz <- lizocimai_pagr %>% 
+  filter(pdb != "2LZM" & pdb != "1L63") %>% 
+  select(pdb, deltaTm, WT) %>% 
+  drop_na(pdb, deltaTm) %>% 
+  head()
+
+pdb_tm_pvz
+
+```
 
 
+```{r, message=FALSE}
+# rezultatai_2 <- fun_matricu_paruosimas_atom(pdb_tm_pvz, grupavimo_failas)
+```
 
-
-
-
-
-
+```{r}
+# rezultatai_2$visu_baltymu_kont_sumu_skirtumai_atom
+# rezultatai_2$termo_skirtumai_atom
+```

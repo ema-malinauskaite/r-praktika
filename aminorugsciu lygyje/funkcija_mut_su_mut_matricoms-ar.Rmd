@@ -35,7 +35,7 @@ visu_baltymu_kont_sumu_skirtumai <- data.frame()
 termo_skirtumai <- data.frame() #desine tiesiniu lygciu sistemos puse matricose
 #----
 for (i in pdb_termo_lent$pdb) {
-lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interresidue.table", sep = ""))
+lizocimo_kontaktai <- data.table::fread(paste("../lizocimai/",i,".contacts.interresidue.table", sep = ""))
 kontaktu_sumos <- fun_kontaktu_sumai(lizocimo_kontaktai, nul_lent_plat)
 wt_ir_lizocimas <- rbind(WT_platusis, kontaktu_sumos) %>%
   transpose(keep.names = "kontakto_tipas") %>% 
@@ -60,9 +60,9 @@ return(list(visu_baltymu_kont_sumu_skirtumai = as.matrix(visu_baltymu_kont_sumu_
 ## Matricos paruosimas
 ### Paruosiamos wt ir wtx kontaktu plotu lenteles
 ```{r include=FALSE}
-nuline_lentele_platusis <- readr::read_rds("./data/nuline_lentele_platusis.rds")
-wt_2LZM_platusis <- data.table::fread("./lizocimai/2LZM.contacts.interresidue.table")
-wtx_1L63_platusis <- data.table::fread("./lizocimai/1L63.contacts.interresidue.table")
+nuline_lentele_platusis <- readr::read_rds("../data/nuline_lentele_platusis.rds")
+wt_2LZM_platusis <- data.table::fread("../lizocimai/2LZM.contacts.interresidue.table")
+wtx_1L63_platusis <- data.table::fread("../lizocimai/1L63.contacts.interresidue.table")
 
 wt_2LZM_platusis <- fun_kontaktu_sumai(wt_2LZM_platusis, nuline_lentele_platusis)
 wtx_1L63_platusis <- fun_kontaktu_sumai(wtx_1L63_platusis, nuline_lentele_platusis)
@@ -76,15 +76,15 @@ Bandymui bus naudojama WT = wt temperaturu lentele, kurioje isfiltruoti tiek pdb
 
 Duomenu ikelimas:
 ```{r}
-lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
-wt_2LZM_platusis <- readr::read_rds("./data/wt_2LZM_platusis.rds")
+lizocimai_pagr <- readr::read_rds("../data/pro_344_sm_suppinfo.rds")
+wt_2LZM_platusis <- readr::read_rds("../data/wt_2LZM_platusis.rds")
 ```
 
 ```{r}
 pdb_tm_wt_pvz <- lizocimai_pagr %>% 
   filter(WT == "wt") %>% 
-  select(pdb, deltaTm) %>% 
-  drop_na(pdb, deltaTm) %>% 
+  select(pdb, Tm) %>% 
+  drop_na(pdb, Tm) %>% 
   head()
 
 pdb_tm_wt_pvz
@@ -97,5 +97,5 @@ matricu_lenteles_pvz <- fun_kont_sum_ir_temp_skirtumams(pdb_tm_wt_pvz, wt_2LZM_p
 
 ```{r}
 matricu_lenteles_pvz$termo_skirtumai
-matricu_lenteles_pvz$visu_baltymu_kont_sumu_skirtumai
+data.frame(matricu_lenteles_pvz$visu_baltymu_kont_sumu_skirtumai)
 ```
