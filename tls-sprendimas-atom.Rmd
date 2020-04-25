@@ -16,6 +16,9 @@ library("readr")
 
 
 # TLS sprendimas
+## TLS sprendimas visiem grupavimam
+-
+
 ## ar-ar pagal atomus
 
 Duomenu ikelimas:
@@ -46,16 +49,15 @@ Reiksmiu priskyrimas:
 A <- matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom[, -205]
 b <- c(matricu_lenteles$termo_skirtumai_atom) 
 dim(A)
-
 ```
 
 Surasti netinkamiems:
 ```{r}
-rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
-rankifremoved
-which(rankifremoved == max(rankifremoved))
+# rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+# which(rankifremoved == max(rankifremoved))
 ```
 
+Sprendimas:
 ```{r}
 tls_sprendimas_visi_baltymai <- pracma::qrSolve(A, b)
 ```

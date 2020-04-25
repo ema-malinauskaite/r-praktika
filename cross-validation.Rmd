@@ -1,0 +1,43 @@
+---
+title: "cross-validation"
+author: "Ema Malinauskaite"
+date: "3/26/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+library("pracma")
+library("readr")
+library("caret")
+library(modelr)
+```
+
+```{r}
+set.seed(5)
+duomenys <- data.frame(b, A)
+flds <- createFolds(rownames(duomenys), k = 5, list = TRUE, returnTrain = FALSE)
+
+train <- flds[-1]
+
+train <- unlist(train) %>% as.matrix() %>% as.vector() #remove_rownames()
+train
+
+duomenys[train,]
+```
+
+```{r}
+j <- list()
+
+for (i in 5) {
+
+train <- flds[-i]
+test <- flds[i]
+
+
+}
+
+```
