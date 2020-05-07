@@ -17,27 +17,75 @@ library(modelr)
 ```
 
 ```{r}
+A <- matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom[, -205]
+b <- c(matricu_lenteles$termo_skirtumai_atom)
+dim(A)
+```
+
+```{r}
 set.seed(5)
 duomenys <- data.frame(b, A)
 flds <- createFolds(rownames(duomenys), k = 5, list = TRUE, returnTrain = FALSE)
 
-train <- flds[-1]
+train1 <- flds[-1]
 
-train <- unlist(train) %>% as.matrix() %>% as.vector() #remove_rownames()
-train
+train1 <- unlist(train1) %>% 
+  as.vector() 
+train1
 
-duomenys[train,]
+duomenys[train1,]
 ```
 
 ```{r}
-j <- list()
+train <- vector()
+train <- vector()
+apsk_ir_teor_temp <- data.frame()
 
-for (i in 5) {
+for (i in 1:5) {
+  
+#4
+#Duomenys suskirstomi i train (4 foldai) ir test (1 foldas)
+train <- flds[-i] %>% unlist() %>% as.vector() 
+test <- flds[i] %>% unlist() %>% as.vector() 
 
-train <- flds[-i]
-test <- flds[i]
+#Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+train_teor_temp <- duomenys[train,] %>% .[,1]
+train_kontaktai <- duomenys[train,] %>% .[,-1]
 
+#Apskaiciuojami koeficientai
+koef <- pracma::qrSolve(as.matrix(train_kontaktai), as.matrix(train_teor_temp))
 
+#Pridedami pavadinimai (is tls-spendimas-atom, veliau viskas bus vienam kode, todel nesukuriami cia)
+#koef_su_pavadinimais <- cbind(pavadinimai, data.frame(koef))
+
+#5
+#Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+test_teor_temp <- duomenys[test,] %>% .[,1]
+test_kontaktai <- duomenys[test,] %>% .[,-1]
+
+#Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+apsk_temp <- as.matrix(test_kontaktai) %*% koef
+
+#Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+apsk_ir_teor_temp <- rbind(apsk_ir_teor_temp,cbind(data.frame(apsk_temp), test_teor_temp))
 }
+apsk_ir_teor_temp
 
 ```
+
+```{r}
+apsk_ir_teor_temp_filter <- apsk_ir_teor_temp %>% 
+  filter(apsk_temp > (-100) & apsk_temp < 100) 
+  
+ggplot(apsk_ir_teor_temp_filter) +
+ aes(x = test_teor_temp, y = apsk_temp) +
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+```
+
+
+
+
+
+
+

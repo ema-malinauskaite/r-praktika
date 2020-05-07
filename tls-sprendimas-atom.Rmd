@@ -53,8 +53,9 @@ dim(A)
 
 Surasti netinkamiems:
 ```{r}
-# rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
-# which(rankifremoved == max(rankifremoved))
+rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+rankifremoved
+which(rankifremoved == max(rankifremoved))
 ```
 
 Sprendimas:
@@ -94,7 +95,7 @@ nuline_lentele_atomu <- nuline_lentele_atomu %>%
 
 pavadinimai <- nuline_lentele_atomu %>%
   transpose(keep.names = "kontakto_tipas") %>% 
-  slice(-205) %>% 
+ # slice(-205) %>% 
   select(-V1)
 
 pavadinimai
@@ -137,7 +138,7 @@ ggplot(tls_sprendimas_visi_baltymai_df) +
 tls_sprendimas_visi_baltymai_df %>%  summary()
 
 apskaiciuotos_temperaturos <- 
-  matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom[, -205] %*% tls_sprendimas_visi_baltymai
+  matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom %*% tls_sprendimas_visi_baltymai# [, -205] %*% tls_sprendimas_visi_baltymai
 
 apskaiciuotos_ir_teorines_temperaturos_df <- cbind(pdb_tm_wt, data.frame(apskaiciuotos_temperaturos)) %>% 
   select(-WT)

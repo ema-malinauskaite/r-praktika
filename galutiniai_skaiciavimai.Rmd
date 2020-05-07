@@ -1,7 +1,7 @@
 ---
-title: "fun_atomu_grupavimui"
+title: "bendras skaiciavimas"
 author: "Ema Malinauskaite"
-date: "2/12/2020"
+date: "5/6/2020"
 output: html_document
 ---
 
@@ -11,14 +11,32 @@ library("data.table")
 library("compareDF")
 library("tidyr")
 library("matlib")
+library("pracma")
+library("readr")
+library("caret")
+library(modelr)
+set.seed(6)
 ```
 
+## Duomenu ikelimas
+```{r}
+atom_types <- "JGMLL"
+grupavimo_failas <- data.table::fread(paste0(
+  "/Users/user/Desktop/praktika/r-praktika/atom types/",atom_types, ".atoms"),
+  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
+  data.table = FALSE
+)
+
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+pdb_tm_wt <- lizocimai_pagr %>% 
+  select(pdb, deltaTm, WT) %>% 
+  drop_na(pdb, deltaTm) %>% 
+  filter(pdb != "2LZM" & pdb != "1L63") %>% 
+  .[-(105:121),]
+
+pdb_tm_wt
+```
 ## fun_atomu_grupiu_sumoms
-
-Si funkcija turetu paimti jau su padarytais pavadinimais esancia funkcija ir ciklo pagalba, tikrinti kiekvienos eilutes du paskutinius kintamuosius. Visus kintamojo pavadinimus kurie yra nuo 2 iki paskutinio stulpelio turetu keisti i failo pirmame stulpelyje esancius pavadinimus.
-Ateityje galbut si funkcija arba papildoma funkcija galetu paimti visus esancius atomu tipus ir su jais paskaiciuoti, isspresti tiesine lygciu sistema, o rezultatus issaugoti, taip butu galima tureti daug sprendiniu-koeficientu failu, su kuriias galima toliau atlikti statistikas ir tikrinti tiksluma.
-
-Yra lyg ir du lygiai: pirmiausiai yra visa lentele su skirtingom eilutem, tai nuskaicius lentele reiktu ciklo kuris skaito ta lentele po viena eilute, tuomet reiktu ciklo cikle kad ta eilute nuskaitytu po viena stulpeli, ir tikrintu, ar faile ar_1 ar ar_2 nera jo ir pakeistu i eilutes pavadinima (j)
 
 ```{r}
 fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_failas) { #pirmas kintamasis- kontaktu failas su pridetais pavadinimais ar1_atom1
@@ -97,7 +115,6 @@ nuline_lentele_atomu <- nuline_lentele_atomu %>%
   transpose(make.names = "kontakto_tipas") %>% 
   select(-"solvent-solvent")
 
-
 #-----
 # Standartizavimas
 
@@ -111,39 +128,12 @@ sujungta <- full_join(nuline_lentele_atomu, atom_kont_sumos) %>%
   spread(., key, kontakto_suma)
 
 #----------
-return(nuline_lentele_atomu)
+return(sujungta)
 }
 ```
 
-### Bandymas
-
-duomenu ikelimas:
-```{r}
-lizocimo_atom_kontaktai_1L63 <- data.table::fread("./lizocimai/1L63.contacts.interatom.table", na.strings = ".")
-
-lizocimo_atom_kontaktai_1L63 <- lizocimo_atom_kontaktai_1L63 %>%
-  mutate(V13 = recode_factor(V13, .missing = "solvent")) %>%
-  mutate(V14 = recode_factor(V14, .missing = "solvent"))
-
-
-grupavimo_failas <- data.table::fread(
-  "/Users/user/Desktop/praktika/r-praktika/atom types/FTA.atoms",
-  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
-  data.table = FALSE
-)
-```
-
-```{r}
-rezultatai <- fun_atomu_grupiu_sumoms(lizocimo_atom_kontaktai_1L63, grupavimo_failas)
-rezultatai
-```
-
-
 
 ## Fun_matricu_paruosimas_atom
-
-funkcijos pataisymas lyginant su ar lygyje esancia funkcija:
-wt_platusis ir wtx_platusis turi buti sukurti pacioje funkcijoje, irasius "LMFG" ir taip parsiuntus faila, ji sutvakrkius
 
 ```{r}
 fun_matricu_paruosimas_atom <- function(pdb_termo_lent, grupavimo_failas) {
@@ -204,32 +194,138 @@ return(list(visu_baltymu_kont_sumu_skirtumai_atom = as.matrix(visu_baltymu_kont_
 
 ```
 
-### Bandymas
-Duomenu ikelimas:
+## TLS be CV
+
+Reikalingu matricu sukurimas:
+```{r message=FALSE}
+matricu_lenteles <- fun_matricu_paruosimas_atom(pdb_termo_lent = pdb_tm_wt, grupavimo_failas = grupavimo_failas)
+```
+
+Reiksmiu priskyrimas:
 ```{r}
-grupavimo_failas <- data.table::fread(
-  "/Users/user/Desktop/praktika/r-praktika/atom types/FTA.atoms",
-  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
-  data.table = FALSE
-)
-
-lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
-pdb_tm_pvz <- lizocimai_pagr %>% 
-  filter(pdb != "2LZM" & pdb != "1L63") %>% 
-  select(pdb, deltaTm, WT) %>% 
-  drop_na(pdb, deltaTm) %>% 
-  head()
-
-pdb_tm_pvz
-
+A <- matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom#[, -224]
+b <- c(matricu_lenteles$termo_skirtumai_atom)
+dim(A)
 ```
 
+Surasti netinkamiems:
+```{r}
+rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+which(rankifremoved == max(rankifremoved))
+```
 
-```{r, message=FALSE}
- rezultatai_2 <- fun_matricu_paruosimas_atom(pdb_tm_pvz, grupavimo_failas)
+Koeficientu suradimas:
+```{r}
+tls_sprendimas_visi_baltymai <- 
+  pracma::qrSolve(A, b)
+```
+
+Apskaiciuojamos temperaturos:
+```{r}
+apsk_temp_is_visu <- 
+  A %*% tls_sprendimas_visi_baltymai
+```
+
+Sukuriama apskaiciuotu ir teoriniu temperaturu lentele:
+```{r}
+apsk_ir_teor_temp_is_visu <- cbind(pdb_tm_wt, data.frame(apsk_temp_is_visu)) %>% 
+  select(-WT)
+```
+
+R2 skaiciavimas:
+```{r}
+r2_is_visu <- apsk_ir_teor_temp_is_visu %>% 
+  mutate(r2 = (deltaTm - apsk_temp_is_visu)^2) %>% 
+  summarise(r2 = round(sum(r2), 2))
+```
+
+## CV su TLS sprendimu
+
+```{r}
+duomenys_cv <- data.frame(b, A)
+flds <- createFolds(rownames(duomenys_cv), k = 5, list = TRUE, returnTrain = FALSE)
 ```
 
 ```{r}
- rezultatai_2$visu_baltymu_kont_sumu_skirtumai_atom
- rezultatai_2$termo_skirtumai_atom
+apsk_ir_teor_temp_cv <- data.frame()
+for (i in 1:5) {
+
+#4
+#Duomenys suskirstomi i train (4 foldai) ir test (1 foldas)
+train <- flds[-i] %>% unlist() %>% as.vector() 
+test <- flds[i] %>% unlist() %>% as.vector() 
+
+#Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+train_teor_temp <- duomenys_cv[train,] %>% .[,1]
+train_kontaktai <- duomenys_cv[train,] %>% .[,-1]
+
+#Apskaiciuojami koeficientai
+rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+print(which(rankifremoved == max(rankifremoved)))
+koef <- pracma::qrSolve(as.matrix(train_kontaktai), as.matrix(train_teor_temp))
+
+
+#Pridedami pavadinimai (is tls-spendimas-atom, veliau viskas bus vienam kode, todel nesukuriami cia)
+#koef_su_pavadinimais <- cbind(pavadinimai, data.frame(koef))
+
+#5
+#Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+test_teor_temp <- duomenys_cv[test,] %>% .[,1]
+test_kontaktai <- duomenys_cv[test,] %>% .[,-1]
+
+#Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+apsk_temp <- as.matrix(test_kontaktai) %*% koef
+
+#Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+apsk_ir_teor_temp_cv <- data.frame(rbind(apsk_ir_teor_temp_cv, cbind(data.frame(apsk_temp), test_teor_temp)))
+}
+apsk_ir_teor_temp_cv
 ```
+
+R2 skaiciavimas:
+```{r}
+r2_cv <- apsk_ir_teor_temp_cv %>% 
+  mutate(r2 = (test_teor_temp - apsk_temp)^2) %>% 
+  summarise(r2 = round(sum(r2), 2))
+```
+
+## Grafiku braizymas
+
+```{r}
+be_cv_grafikas <- ggplot(apsk_ir_teor_temp_is_visu) +
+aes(x = deltaTm, y = apsk_temp_is_visu) +
+    labs(x = "Teorine temperatura",
+         y = "Apskaiciuota temperatura",
+         title = paste0("Be CV (", atom_types, ")"),
+         subtitle = paste0("r2 = ",r2_is_visu))+
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+
+ggsave(be_cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+#-----
+
+apsk_ir_teor_temp_cv_filter <- apsk_ir_teor_temp_cv %>% 
+  filter(apsk_temp > (-100) & apsk_temp < 100) 
+  
+cv_grafikas <- ggplot(apsk_ir_teor_temp_cv) +
+ aes(x = test_teor_temp, y = apsk_temp) +
+    labs(x = "Teorine temperatura",
+         y = "Apskaiciuota temperatura",
+         title = paste0("CV (", atom_types, ")"),
+         subtitle = paste0("r2 = ", r2_cv)) +
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+
+ggsave(cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+#----
+be_cv_grafikas
+cv_grafikas
+```
+
+
+
+
+
+
