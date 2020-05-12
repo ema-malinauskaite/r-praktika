@@ -20,7 +20,7 @@ set.seed(6)
 
 ## Duomenu ikelimas
 ```{r}
-atom_types <- ""
+atom_types <- "GROMOS53"
 grupavimo_failas <- data.table::fread(paste0(
   "/Users/user/Desktop/praktika/r-praktika/atom types/",atom_types, ".atoms"),
   dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
@@ -197,11 +197,63 @@ return(list(visu_baltymu_kont_sumu_skirtumai_atom = as.matrix(visu_baltymu_kont_
 
 ```
 
+## ML
+### 5-fold CV
+
+Reikalingu matricu sukurimas (VELIAU ISTRINTI BLOKA NES YRA PRIE TLS)
+```{r message=FALSE}
+matricu_lenteles <- fun_matricu_paruosimas_atom(pdb_termo_lent = pdb_tm_wt, grupavimo_failas = grupavimo_failas)
+
+A <- matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom
+b <- c(matricu_lenteles$termo_skirtumai_atom)
+dim(A)
+```
+
+```{r}
+duomenys_cv <- data.frame(b, A)# %>% .[,-226]
+
+trainingRowIndex <- sample(1:nrow(duomenys_cv), 0.8*nrow(duomenys_cv))  # row indices for training data
+trainingData <- duomenys_cv[trainingRowIndex, ]  # model training data
+testData  <- duomenys_cv[-trainingRowIndex, ]   # test data
+
+# Build the model on training data -
+lmMod <- lm(b ~ ., data=trainingData)  # build the model
+distPred <- predict(lmMod, testData)
+summary(lmMod) 
+
+actuals_preds <- data.frame(cbind(actuals=testData$b, predicteds=distPred))  # make actuals_predicteds dataframe.
+correlation_accuracy <- cor(actuals_preds) 
+head(actuals_preds)
+
+saveRDS(actuals_preds, file = 
+  "rds-failai/teori_ir_apsk_temp_lm.rds")
+
+r2_ml <- actuals_preds %>% 
+  mutate(r2 = (actuals - predicteds)^2) %>% 
+  summarise(r2 = round(sum(r2), 2))
+
+ml_grafikas <- ggplot(actuals_preds %>% filter(predicteds > -200 & predicteds < 200)) +
+aes(x = actuals, y = predicteds) +
+    labs(x = "Teorine temperatura",
+         y = "Apskaiciuota temperatura",
+         title = paste0("LM (", atom_types, ")"),
+         subtitle = paste0("r2 = ",r2_ml))+
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+
+
+ml_grafikas
+
+ggsave(ml_grafikas, device = "jpeg",filename = paste0(atom_types, "_ml_lm.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+```
+
+
 ## TLS be CV
 
 Reikalingu matricu sukurimas:
 ```{r message=FALSE}
-matricu_lenteles <- fun_matricu_paruosimas_atom(pdb_termo_lent = pdb_tm_wt, grupavimo_failas = grupavimo_failas)
+matricu_lenteles <- fun_matricu_paruosimas_atomMMMMMMMMMMMMMMM(pdb_termo_lent = pdb_tm_wt, grupavimo_failas = grupavimo_failas)
 ```
 
 Reiksmiu priskyrimas:
@@ -233,6 +285,9 @@ Sukuriama apskaiciuotu ir teoriniu temperaturu lentele:
 ```{r}
 apsk_ir_teor_temp_is_visu <- cbind(pdb_tm_wt, data.frame(apsk_temp_is_visu)) %>% 
   select(-WT)
+
+saveRDS(apsk_ir_teor_temp_is_visu, file = 
+  "rds-failai/apsk_ir_teor_temp_is_visu.rds")
 ```
 
 R2 skaiciavimas:
@@ -255,52 +310,117 @@ aes(x = deltaTm, y = apsk_temp_is_visu) +
 ggsave(be_cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
 
 ```
-## CV su TLS sprendimu
+
+# LOOCV
 
 ```{r}
-duomenys_cv <- data.frame(b, A)
-flds <- createFolds(rownames(duomenys_cv), k = 5, list = TRUE, returnTrain = FALSE)
-```
+duomenys_cv <- data.frame(b, A) %>% .[,-226]
+eil_skaicius <- nrow(duomenys_cv)
+apsk_ir_teor_temp_loo_cv <- data.frame()
 
-```{r}
-apsk_ir_teor_temp_cv <- data.frame()
-for (i in 1:5) {
+for (i in 1:eil_skaicius) {
 
-#4
-#Duomenys suskirstomi i train (4 foldai) ir test (1 foldas)
-train <- flds[-i] %>% unlist() %>% as.vector() 
-test <- flds[i] %>% unlist() %>% as.vector() 
+#Duomenys suskirstomi i train ir test
+train_loo <- duomenys_cv[-i,]
+test_loo <- duomenys_cv[i,]
 
 #Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
-train_teor_temp <- duomenys_cv[train,] %>% .[,1]
-train_kontaktai <- duomenys_cv[train,] %>% .[,-1]
+train_loo_teor_temp <- train_loo[,1]
+train_loo_kontaktai <- train_loo[,-1]
 
 #Apskaiciuojami koeficientai
-rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
-print(which(rankifremoved == max(rankifremoved)))
-koef <- pracma::qrSolve(as.matrix(train_kontaktai), as.matrix(train_teor_temp))
-
-
-#Pridedami pavadinimai (is tls-spendimas-atom, veliau viskas bus vienam kode, todel nesukuriami cia)
-#koef_su_pavadinimais <- cbind(pavadinimai, data.frame(koef))
+  # rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+  # print(which(rankifremoved == max(rankifremoved)))
+koef_loo <- pracma::qrSolve(as.matrix(train_loo_kontaktai), as.matrix(train_loo_teor_temp))
 
 #5
 #Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
-test_teor_temp <- duomenys_cv[test,] %>% .[,1]
-test_kontaktai <- duomenys_cv[test,] %>% .[,-1]
+test_loo_teor_temp <- test_loo[,1]
+test_loo_kontaktai <- test_loo[,-1]
 
 #Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
-apsk_temp <- as.matrix(test_kontaktai) %*% koef
+apsk_temp_loo <- as.matrix(test_loo_kontaktai) %*% koef_loo
 
 #Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
-apsk_ir_teor_temp_cv <- data.frame(rbind(apsk_ir_teor_temp_cv, cbind(data.frame(apsk_temp), test_teor_temp)))
+apsk_ir_teor_temp_loo_cv <- data.frame(rbind(apsk_ir_teor_temp_loo_cv, cbind(data.frame(apsk_temp_loo), test_loo_teor_temp)))
 }
-apsk_ir_teor_temp_cv
+apsk_ir_teor_temp_loo_cv
+
+saveRDS(apsk_ir_teor_temp_loo_cv, file = 
+  "rds-failai/apsk_ir_teor_temp_loo_cv.rds")
 ```
 
 R2 skaiciavimas:
 ```{r}
-r2_cv <- apsk_ir_teor_temp_cv %>% 
+r2_cv_loo <- apsk_ir_teor_temp_loo_cv %>% 
+  mutate(r2 = (test_loo_teor_temp - apsk_temp_loo)^2) %>% 
+  summarise(r2 = round(sum(r2), 2))
+```
+
+```{r}
+apsk_ir_teor_temp_loo_cv_filter <- apsk_ir_teor_temp_loo_cv %>%
+  filter(apsk_temp_loo > (-100) & apsk_temp_loo < 100)
+  
+cv_loo_grafikas <- ggplot(apsk_ir_teor_temp_loo_cv_filter) +
+ aes(x = test_loo_teor_temp, y = apsk_temp_loo) +
+    labs(x = "Teorine temperatura",
+         y = "Apskaiciuota temperatura",
+         title = paste0("LOOCV (", atom_types, ")"),
+         subtitle = paste0("r2 = ", r2_cv_loo)) +
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+
+ggsave(cv_loo_grafikas, device = "jpeg",filename = paste0(atom_types, "_loo_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+```
+
+```{r}
+cv_loo_grafikas
+```
+## 5-fold CV 
+
+```{r}
+duomenys_cv <- data.frame(b, A) %>% .[,-226]
+flds <- createFolds(rownames(duomenys_cv), k = 5, list = TRUE, returnTrain = FALSE)
+```
+
+```{r}
+apsk_ir_teor_temp_5_cv <- data.frame()
+for (i in 1:5) {
+
+#4
+#Duomenys suskirstomi i train (4 foldai) ir test (1 foldas)
+train_5 <- flds[-i] %>% unlist() %>% as.vector() 
+test_5 <- flds[i] %>% unlist() %>% as.vector() 
+
+#Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+train_5_teor_temp <- duomenys_cv[train_5,] %>% .[,1]
+train_5_kontaktai <- duomenys_cv[train_5,] %>% .[,-1]
+
+#Apskaiciuojami koeficientai
+rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+print(which(rankifremoved == max(rankifremoved)))
+koef_5 <- pracma::qrSolve(as.matrix(train_5_kontaktai), as.matrix(train_5_teor_temp))
+
+#5
+#Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+test_5_teor_temp <- duomenys_cv[test_5,] %>% .[,1]
+test_5_kontaktai <- duomenys_cv[test_5,] %>% .[,-1]
+
+#Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+apsk_temp_5 <- as.matrix(test_5_kontaktai) %*% koef_5
+
+#Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+apsk_ir_teor_temp_5_cv <- data.frame(rbind(apsk_ir_teor_temp_5_cv, cbind(data.frame(apsk_temp_5), test_5_teor_temp)))
+}
+apsk_ir_teor_temp_5_cv
+
+saveRDS(apsk_ir_teor_temp_5_cv, file = 
+  "rds-failai/apsk_ir_teor_temp_5_cv.rds")
+```
+
+R2 skaiciavimas:
+```{r}
+r2_cv_<- apsk_ir_teor_temp_cv %>% 
   mutate(r2 = (test_teor_temp - apsk_temp)^2) %>% 
   summarise(r2 = round(sum(r2), 2))
 ```
@@ -309,7 +429,7 @@ r2_cv <- apsk_ir_teor_temp_cv %>%
 apsk_ir_teor_temp_cv_filter <- apsk_ir_teor_temp_cv %>% 
   filter(apsk_temp > (-100) & apsk_temp < 100) 
   
-cv_grafikas <- ggplot(apsk_ir_teor_temp_cv) +
+cv_grafikas <- ggplot(apsk_ir_teor_temp_cv_filter) +
  aes(x = test_teor_temp, y = apsk_temp) +
     labs(x = "Teorine temperatura",
          y = "Apskaiciuota temperatura",
@@ -320,7 +440,9 @@ cv_grafikas <- ggplot(apsk_ir_teor_temp_cv) +
 
 ggsave(cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
 ```
-
+```{r}
+cv_grafikas
+```
 ## Grafiku braizymas
 
 ```{r}

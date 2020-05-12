@@ -93,6 +93,6 @@ library("ggplot2")
 # Heatmap 
 ggplot(pilna_lentele, aes(x = ar_1, y= ar_2, fill = suma)) + 
   geom_tile() +
-  scale_fill_gradient(low="yellow", high="blue") +
+  scale_fill_gradient(low="red", high="blue") +
   geom_text(aes(ar_1, ar_2, label = suma), color = "black", size = 4) 
 ```
