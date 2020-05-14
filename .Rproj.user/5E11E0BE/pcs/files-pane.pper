@@ -1,8 +1,8 @@
 {
-    "path" : "~/Desktop/praktika/r-praktika",
+    "path" : "~/Desktop/praktika/r-praktika/grafikai",
     "sortOrder" : [
         {
-            "ascending" : true,
+            "ascending" : false,
             "columnIndex" : 4
         },
         {
@@ -10,7 +10,7 @@
             "columnIndex" : 3
         },
         {
-            "ascending" : true,
+            "ascending" : false,
             "columnIndex" : 2
         },
         {

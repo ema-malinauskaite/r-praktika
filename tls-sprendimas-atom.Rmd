@@ -153,3 +153,127 @@ apskaiciuotos_ir_teorines_temperaturos_df %>%
   arrange(skirtumas)
   
 ```
+
+
+
+
+
+
+
+## Is kito skripto 5fold CV jeigu reiketu prie galutinio galutinio
+```{r}
+#------
+# 5 fold CV su tls
+# flds <- createFolds(rownames(duomenys_cv), k = 5, list = TRUE, returnTrain = FALSE)
+# 
+# apsk_ir_teor_temp_5_cv <- data.frame()
+# for (i in 1:5) {
+# 
+# #4
+# #Duomenys suskirstomi i train (4 foldai) ir test (1 foldas)
+# train_5 <- flds[-i] %>% unlist() %>% as.vector()
+# test_5 <- flds[i] %>% unlist() %>% as.vector()
+# 
+# #Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+# train_5_teor_temp <- duomenys_cv[train_5,] %>% .[,1]
+# train_5_kontaktai <- duomenys_cv[train_5,] %>% .[,-1]
+# 
+# #Apskaiciuojami koeficientai
+# rankifremoved <- sapply(1:ncol(A), function (x) qr(A[,-x])$rank)
+# print(which(rankifremoved == max(rankifremoved)))
+# koef_5 <- pracma::qrSolve(as.matrix(train_5_kontaktai), as.matrix(train_5_teor_temp))
+# 
+# #5
+# #Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+# test_5_teor_temp <- duomenys_cv[test_5,] %>% .[,1]
+# test_5_kontaktai <- duomenys_cv[test_5,] %>% .[,-1]
+# 
+# #Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+# apsk_temp_5 <- as.matrix(test_5_kontaktai) %*% koef_5
+# 
+# #Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+# apsk_ir_teor_temp_5_cv <- data.frame(rbind(apsk_ir_teor_temp_5_cv, cbind(data.frame(apsk_temp_5), test_5_teor_temp)))
+# }
+# apsk_ir_teor_temp_5_cv
+# 
+# saveRDS(apsk_ir_teor_temp_5_cv, file =
+#   paste0("rds-failai/apsk_ir_teor_temp_5_cv-",atom_types,".rds"))
+# 
+# r2_cv_<- apsk_ir_teor_temp_cv %>%
+#   mutate(r2 = (test_teor_temp - apsk_temp)^2) %>%
+#   summarise(r2 = round(sum(r2), 2))
+# 
+# apsk_ir_teor_temp_cv_filter <- apsk_ir_teor_temp_cv %>%
+#   filter(apsk_temp > (-100) & apsk_temp < 100)
+# 
+# cv_grafikas <- ggplot(apsk_ir_teor_temp_cv) +
+#  aes(x = test_teor_temp, y = apsk_temp) +
+#     labs(x = "Teorinis temperaturu skirtumas",
+#          y = "Apskaiciuotas temperaturu skirtumas",
+#          title = paste0("CV (", atom_types, ")"),
+#          subtitle = paste0("r2 = ", r2_cv)) +
+#  geom_point(size = 1L, colour = "#0c4c8a") +
+#  theme_minimal()
+# 
+# cv_grafikas_filtered <- ggplot(apsk_ir_teor_temp_cv %>%  filter(apsk_temp > (-100) & apsk_temp < 100) ) +
+#  aes(x = test_teor_temp, y = apsk_temp) +
+#     labs(x = "Teorinis temperaturu skirtumas",
+#          y = "Apskaiciuotas temperaturu skirtumas",
+#          title = paste0("CV (", atom_types, ")"),
+#          subtitle = paste0("r2 = ", r2_cv)) +
+#  geom_point(size = 1L, colour = "#0c4c8a") +
+#  theme_minimal()
+# 
+# ggsave(cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+# 
+# ggsave(cv_grafikas_filtered, device = "jpeg",filename = paste0(atom_types, "_cv_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+```
+
+ir ml:
+```{r}
+#-------
+# ML 5-fold CV
+# 
+# trainingRowIndex <- sample(1:nrow(duomenys_cv), 0.8*nrow(duomenys_cv))  # row indices for training data
+# trainingData <- duomenys_cv[trainingRowIndex, ]  # model training data
+# testData  <- duomenys_cv[-trainingRowIndex, ]   # test data
+# 
+# lmMod <- lm(b ~ ., data=trainingData)  # build the model
+# distPred <- predict(lmMod, testData)
+# summary(lmMod) 
+# 
+# actuals_preds <- data.frame(cbind(actuals=testData$b, predicteds=distPred))  # make actuals_predicteds dataframe.
+# correlation_accuracy <- cor(actuals_preds) 
+# head(actuals_preds)
+# 
+# saveRDS(actuals_preds, file = 
+#   paste0("rds-failai/teori_ir_apsk_temp_lm-", atom_types, ".rds"))
+# 
+# r2_ml <- actuals_preds %>% 
+#   mutate(r2 = (actuals - predicteds)^2) %>% 
+#   summarise(r2 = round(sum(r2), 2))
+# 
+# ml_grafikas <- ggplot(actuals_preds) +
+# aes(x = actuals, y = predicteds) +
+#     labs(x = "Teorinis temperaturu skirtumas",
+#          y = "Apskaiciuotas temperaturu skirtumas",
+#          title = paste0("LM (", atom_types, ")"),
+#          subtitle = paste0("r2 = ",r2_ml))+
+#  geom_point(size = 1L, colour = "#0c4c8a") +
+#  theme_minimal()
+# 
+# ml_grafikas_filtered <- ggplot(actuals_preds %>% filter(predicteds > -100 & predicteds < 100)) +
+# aes(x = actuals, y = predicteds) +
+#     labs(x = "Teorinis temperaturu skirtumas",
+#          y = "Apskaiciuotas temperaturu skirtumas",
+#          title = paste0("LM (", atom_types, "), filtered"),
+#          subtitle = paste0("r2 = ",r2_ml))+
+#  geom_point(size = 1L, colour = "#0c4c8a") +
+#  theme_minimal()
+# 
+# ggsave(ml_grafikas, device = "jpeg",filename = paste0(atom_types, "_ml_lm.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+# 
+# ggsave(ml_grafikas_filtered, device = "jpeg",filename = paste0(atom_types, "_ml_lm_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+```

@@ -38,6 +38,15 @@ lizocimas_fasta_wtx <- data.table::fread(
 
 ```
 
+Patikrinami klasteriai:
+```{r}
+ggplot(lizocimai_pagr) +
+ aes(x = pH, y = Tm) +
+ geom_point(size = 1L, colour = "#0c4c8a") +
+ theme_minimal()
+```
+
+
 ```{r}
 
 seka_wt <- strsplit(lizocimas_fasta_wt[1,1], split = "")[[1]]
@@ -67,8 +76,12 @@ if (length(seka_i) == 164) {
 
 mut_skaicius <- rbind(mut_skaicius, mutaciju)
 }
-lizocimai_pagr_su_mutacijom <-cbind(lizocimai_pagr_be_na, mut_skaicius) %>% 
-  rename("mut_skaicius" = "X0")
+lizocimai_pagr_su_mutacijom <- cbind(lizocimai_pagr_be_na, mut_skaicius) %>% 
+  rename("mut_skaicius" = "X0") %>%  
+  mutate(pH_grupe = as.factor(if_else(pH < 2.5, "pirma", #Priskiriama grupe (is grafiko auksciau: 4 klasteriai):
+                              if_else(pH < 4, "antra", 
+                              if_else(pH < 6.1, "trecia", "ketvirta"))))) %>% 
+  mutate(pH_grupe = fct_relevel(pH_grupe, "pirma", "antra", "trecia", "ketvirta"))
 
 saveRDS(lizocimai_pagr_su_mutacijom, file = 
   "data/lizocimai_pagr_su_mutacijom.rds")
