@@ -1,0 +1,94 @@
+---
+title: "lkjfogjdog"
+author: "Ema Malinauskaite"
+date: "5/14/2020"
+output: html_document
+---
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+library("matlib")
+library("pracma")
+library("readr")
+library("caret")
+library(modelr)
+set.seed(6)
+```
+
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+lizocimai_pagr_be_na <- lizocimai_pagr %>% 
+  filter(pdb != "219L") %>% 
+ # filter(pdb != "2LZM" & pdb != "1L63") %>% 
+  drop_na(pdb, deltaTm)
+
+lizocimas_fasta_wt <- data.table::fread(
+  "/Users/user/Desktop/praktika/r-praktika/lizocimai/2LZM.fasta",
+  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8",
+  data.table = FALSE)
+
+lizocimas_fasta_wtx <- data.table::fread(
+  "/Users/user/Desktop/praktika/r-praktika/lizocimai/1L63.fasta",
+  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8",
+  data.table = FALSE)
+
+
+```
+
+```{r}
+
+seka_wt <- strsplit(lizocimas_fasta_wt[1,1], split = "")[[1]]
+seka_wtx <- strsplit(lizocimas_fasta_wtx[1,1], split = "")[[1]]
+
+mut_skaicius <- data.frame()
+
+for(e in 1:nrow(lizocimai_pagr_be_na)) {
+#ikeliama vieno baltymo seka
+  i <- as.character(lizocimai_pagr_be_na[e, 1])
+fasta_i <- data.table::fread(paste0(
+  "/Users/user/Desktop/praktika/r-praktika/lizocimai/", i, ".fasta"),
+  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8",
+  data.table = FALSE)
+seka_i <- strsplit(fasta_i[1,1], split = "")[[1]]
+
+if(lizocimai_pagr_be_na[e, "WT"] == "wt") {seka_WT <- seka_wt}
+else{ seka_WT <- seka_wtx}
+mutaciju <- 0
+#tikrinama kiek ar
+if (length(seka_i) == 164) {
+#tikrinama, kiek mutaciju
+  for (j in 1:164) {
+   if (seka_WT[j] != seka_i[j]) {mutaciju <- mutaciju + 1} #jeigu 164
+}
+} else {mutaciju <- 1000} #jeigu daugiau ar maziau nei 164
+
+mut_skaicius <- rbind(mut_skaicius, mutaciju)
+}
+lizocimai_pagr_su_mutacijom <-cbind(lizocimai_pagr_be_na, mut_skaicius) %>% 
+  rename("mut_skaicius" = "X0")
+
+saveRDS(lizocimai_pagr_su_mutacijom, file = 
+  "data/lizocimai_pagr_su_mutacijom.rds")
+
+lizocimai_pagr_su_mutacijom
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
