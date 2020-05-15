@@ -21,7 +21,7 @@ set.seed(6)
 ```{r}
 lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
 lizocimai_pagr_be_na <- lizocimai_pagr %>% 
-  filter(pdb != "219L") %>% 
+
  # filter(pdb != "2LZM" & pdb != "1L63") %>% 
   drop_na(pdb, deltaTm)
 
