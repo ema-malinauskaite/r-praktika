@@ -20,21 +20,30 @@ lizocimai_pagr <- readxl::read_excel("./data/pro_344_sm_suppinfo.xlsx", sheet = 
   as.data.frame(stringsAsFactors = FALSE)
 ```
 
+
+Pasalinti veliau:
+```{r}
+# lizocimai_pagr <-  lizocimai_pagr_su_mutacijom %>% filter(mut_skaicius<1000) 
+# #%>% filter(deltaTm < 10 & deltaTm > -10 )
+# lizocimai_pagr
+```
 Duomenų tvarkymas:
 ```{r}
 names(lizocimai_pagr) <- make.names(names(lizocimai_pagr))
 
 lizocimai_pagr <- lizocimai_pagr %>%
-  mutate(WT = ifelse((str_detect(Protein, "WT\\*")) == TRUE, "wtx", "wt")) %>% 
-  select(-Protein, -Activity, -Space.group, -Reoslution..A., -Comment, -Tm) %>% 
-  rename(pdb = PDB.code, deltaTm = ΔTm, ddeltaG = ΔΔG ) %>% 
+  mutate(WT = ifelse((str_detect(Protein, "WT\\*")) == TRUE, "wtx", "wt")) %>%
+  select(-Protein, -Activity, -Space.group, -Reoslution..A., -Comment, -Tm) %>%
+  rename(pdb = PDB.code, deltaTm = ΔTm, ddeltaG = ΔΔG ) %>%
   mutate_if(is.character, as_factor)
 ```
 
 Apskaiciuojamos temperaturos (ne temperaturu skirtumai):
 ```{r}
 lizocimai_pagr <- lizocimai_pagr %>%
-  mutate(Tm = if_else(WT == "wt", deltaTm + 67.2, deltaTm + 65.8))
+  mutate(Tm = if_else(WT == "wt", deltaTm + 67.2, deltaTm + 65.8))# %>% 
+#  filter(deltaTm < 10 & deltaTm > -10 )
+lizocimai_pagr %>% filter(!is.na(pdb) & !is.na(Tm))
 ```
 
 Duomenų peržiūra:
@@ -51,8 +60,8 @@ readr::write_rds(lizocimai_pagr, "./data/pro_344_sm_suppinfo.rds")
 # Skaiciuojamos statistikos iskirscius pagal WT
 Isskirscius pagal WT skaiciuojamos statistikos grupems:
 ```{r}
-lizocimai_stat_WT_T <- lizocimai_pagr %>% 
-  filter(!is.na(Tm)) 
+lizocimai_stat_WT_T <- lizocimai_pagr %>% filter(deltaTm < 10 & deltaTm > -10 ) %>% 
+  filter(!is.na(Tm)) %>%  data.frame()
 
 lizocimai_stat_WT_T %>%
   group_by(WT) %>%
@@ -60,6 +69,9 @@ lizocimai_stat_WT_T %>%
             Tm_mediana = median(Tm),
             q1 = quantile(Tm, 0.25),
             q3 = quantile(Tm, 0.75),
+            iqr = IQR(Tm),
+            apatinis = q1 - 3*iqr,
+            virsutinis = q3 + 3*iqr,
             suma = n(),
             turi_pdb = sum(!is.na(pdb)))
 
@@ -89,13 +101,22 @@ lizocimai_stat_WT_pH %>%
 ```
 ## Grafikai
 Lyginama temperatura wt ir wt*
-```{r}
-ggplot(lizocimai_stat_WT_T) +
- aes(x = WT, y = Tm) +
- geom_boxplot(fill = "green") +
- theme_minimal()
+```{r fig.height=3, fig.width=2}
+pav3 <- ggplot(lizocimai_stat_WT_T) +
+ aes(x = WT, y = Tm, fill = WT) +
+ geom_violin() + 
+ geom_boxplot(width=0.1) +
+ scale_fill_hue() +
+ theme_light() +
+ theme(legend.position = "none") +
+  scale_y_continuous( limits=c(20, 100))
+
+
+pav3
 ```
 
+```{r}
+```
 Lyginama deltaG wt ir wt*:
 ```{r}
 ggplot(lizocimai_stat_WT_G) +
@@ -124,18 +145,19 @@ ggplot(lizocimai_pagr) +
 
 Priskiriama grupe (is grafiko matome, kad yra 4 klasteriai):
 ```{r}
-lizocimai_pagr <- lizocimai_pagr %>% 
+lizocimai_pagr <- lizocimai_pagr %>%
   mutate(pH_grupe = as.factor(if_else(pH < 2.5, "pirma", 
                               if_else(pH < 4, "antra", 
                               if_else(pH < 6.1, "trecia", "ketvirta"))))) %>% 
-  mutate(pH_grupe = fct_relevel(pH_grupe, "pirma", "antra", "trecia", "ketvirta"))
+  mutate(pH_grupe = fct_relevel(pH_grupe, "pirma", "antra", "trecia", "ketvirta")) %>% 
+  filter(!is.na(pH_grupe))
 
 head(lizocimai_pagr)
 ```
 
 Klasteriai pazymimi spalvomis:
 ```{r}
-ggplot(lizocimai_pagr) +
+pav1 <- ggplot(lizocimai_pagr) +
  aes(x = pH, y = Tm, colour = pH_grupe) +
  geom_point(size = 1L) +
  scale_color_hue() +
@@ -143,11 +165,10 @@ ggplot(lizocimai_pagr) +
 ```
 
 
-
 Isskirscius pagal pH gruper apskaiciuojamos statistikos grupems:
 ```{r}
 lizocimai_stat_ph_T <- lizocimai_pagr %>% 
-  filter(!is.na(Tm)) 
+  filter(!is.na(Tm) & !is.na(pH_grupe)) %>% filter(deltaTm < 10 & deltaTm > -10 )
 
 lizocimai_stat_ph_T %>%
   group_by(pH_grupe) %>%
@@ -175,13 +196,19 @@ lizocimai_stat_ph_G %>%
 
 Lyginamos temperaturos skirtingose pH grupese:
 ```{r}
-ggplot(lizocimai_stat_ph_T) +
- aes(x = pH_grupe, y = Tm, fill = pH_grupe) +
- geom_boxplot() +
+pav2 <- ggplot(lizocimai_stat_ph_T) +
+ aes(x = pH_grupe, y = Tm, fill = pH_grupe ) +
+ geom_violin() + 
+ geom_boxplot(width=0.1) + theme_minimal() +
  scale_fill_hue() +
- theme_minimal()
+ theme_light() +
+ theme(legend.position = "none") +
+  scale_y_continuous( limits=c(40, 100))
+
+pav2
 
 ```
+
 
 Lyginama deltaG skirtingose pH grupese:
 ```{r}
@@ -190,5 +217,12 @@ ggplot(lizocimai_stat_ph_G) +
  geom_boxplot() +
  scale_fill_hue() +
  theme_minimal()
+
+```
+
+
+```{r}
+with(apsk_ir_teor_temp_is_visu, plotMeans(deltaTm, pH_grupe, 
+  error.bars="se", connect=TRUE))
 
 ```

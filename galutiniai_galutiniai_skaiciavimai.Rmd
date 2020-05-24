@@ -23,14 +23,17 @@ library("pracma")
 library("readr")
 library("caret")
 library(modelr)
+library("esquisse")
+#library("rapportools")
 set.seed(6)
 ```
 
 
 ## fun_atomu_grupiu_sumoms
 
+
 ```{r}
-fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_lentele, nuline_lentele_atomu) { #pirmas kintamasis- kontaktu failas su pridetais pavadinimais ar1_atom1
+fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_lentele, nuline_lentele_atomu) { #pirmas kintamasis - kontaktu failas su pridetais pavadinimais ar1_atom1
   
 #-------
 # Atomu pervadinimas pilnesniu pavadinimu
@@ -38,6 +41,7 @@ fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_lentele, nuline_lentele_
   kontaktai_atomu_pavadinimai <- liz_kont %>%
   select(V6, V7, V13, V14, V15) %>% 
 #  filter(V13 != "solvent") %>% 
+ # filter(V6 != "CYS" & V13 != "CYS") %>% 
   mutate(V7 = recode_factor(V7,"OXT" = "O")) %>% 
   mutate(V14 = recode_factor(V14,"OXT" = "O")) %>% 
   mutate(V6 = recode_factor(V6,"MSE" = "MET")) %>% 
@@ -150,9 +154,13 @@ lizocimo_kontaktai_wtx <- lizocimo_kontaktai_wtx %>%
   mutate(V14 = recode_factor(V14, .missing = "solvent"))
 
 wtx_atom <- fun_atomu_grupiu_sumoms(lizocimo_kontaktai_wtx,  grupavimo_lentele, nuline_lentele_atomu)
+skaicius <- 0
 #----
 for (i in pdb_termo_lent$pdb) {
 lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""), na.strings = ".")
+
+skaicius <- skaicius +1
+print(skaicius)
 
 lizocimo_kontaktai <- lizocimo_kontaktai %>%
   mutate(V13 = recode_factor(V13, .missing = "solvent")) %>%
@@ -199,20 +207,22 @@ return(list(visu_baltymu_kont_sumu_skirtumai_atom = as.matrix(visu_baltymu_kont_
 lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
 lizocimai_pagr_su_mutacijom <- readr::read_rds("./data/lizocimai_pagr_su_mutacijom.rds")
 
+#po to pakeisti atgal kaip buvo!!!!!
 pdb_tm_wt_mut <- lizocimai_pagr_su_mutacijom %>% 
   select(pdb, deltaTm, WT, mut_skaicius) %>% 
   filter(pdb != "2LZM" & pdb != "1L63" & pdb != "219L" ) %>% 
   .[-(105:121),] %>% 
-  filter(mut_skaicius < 3) %>% 
-  select(-mut_skaicius) %>% 
-  filter(deltaTm > -25)
+  filter(mut_skaicius < 1000) %>%
+  select(-mut_skaicius) %>%
+  filter(deltaTm > -10 & deltaTm < 10)
   
 # Sukuriama tokia pati pdb_tm_wt_mut lnetele kaip skaiciavimui, tik su visais stulpeliais
 pdb_tm_wt_mut_visi_stulpeliai <- lizocimai_pagr_su_mutacijom %>% 
   filter(pdb != "2LZM" & pdb != "1L63" & pdb != "219L" ) %>% 
   .[-(105:121),] %>% 
-  filter(mut_skaicius < 3) %>% 
-  filter(deltaTm > -25)
+  filter(mut_skaicius < 1000) %>% 
+  filter(deltaTm > -10 & deltaTm < 10)
+
 
 pdb_tm_wt_mut_visi_stulpeliai
 ```
@@ -220,22 +230,47 @@ pdb_tm_wt_mut_visi_stulpeliai
 ## Skaiciavimai
 ```{r, message=FALSE}
 # Atomu tipu nuskaitymas cikle
-for(e in c("RESIDUE")) { 
+for(e in c( "RESIDUE"
+           )) { 
 atom_types_parsiuntimui <- e
  grupavimo_failas <- data.table::fread(paste0("/Users/user/Desktop/praktika/r-praktika/atom_types/",atom_types_parsiuntimui, ".atoms"), 
   dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
   data.table = FALSE
 )
- 
-atom_types <- paste0(e, "_mut2_beHISLYS_PROPRO_TRPTRP_PROTRP_") # Pavadinimo dalis, kuri nusako koks atomu grupavimo tipas, bei kita info
+atom_types <- paste0(e, "_graf_filtr_") # Pavadinimo dalis, kuri nusako koks atomu grupavimo tipas, bei kita info
+
+print(atom_types)
+
+if(nrow(grupavimo_failas) < 22) {
 #---- 
 # Reiklaingu matricu sukurimas
 matricu_lenteles <- fun_matricu_paruosimas_atom(pdb_termo_lent = pdb_tm_wt_mut, grupavimo_failas = grupavimo_failas)
 
-A <- matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom %>% .[,-c(144, 204,208, 225)] 
+A <- matricu_lenteles$visu_baltymu_kont_sumu_skirtumai_atom
 b <- c(matricu_lenteles$termo_skirtumai_atom)
-duomenys_cv <- data.frame(b, A) 
 
+
+
+#Patikrinimas, kiek yra eiluciu, kuriose tik 1-2 baltymai su tuo kontakto tipu
+kontaktu_sumos_wt_ir_wtx <- data.table(A)
+
+kontaktu_sumos_wt_ir_wtx_susumuotos <- kontaktu_sumos_wt_ir_wtx %>% 
+  summarise_all(n_distinct)
+
+if(!rapportools::is.empty(which(kontaktu_sumos_wt_ir_wtx_susumuotos < 3))) {
+isfiltruoti_kontaktus <- kontaktu_sumos_wt_ir_wtx_susumuotos[which(kontaktu_sumos_wt_ir_wtx_susumuotos < 3)] %>% 
+  transpose(keep.names = "pavadinimai") %>% 
+  rename("wt_ir_wtx" = "V1")
+}
+
+#patikrinus kokie kontaktai yra reti, kai kurie isfiltruojami
+if(!rapportools::is.empty(which(kontaktu_sumos_wt_ir_wtx_susumuotos < 3))) {
+A <- A %>% data.table() %>% 
+  select(-as.vector(isfiltruoti_kontaktus$pavadinimai)) %>% as.matrix()
+}
+duomenys_cv <- data.table(b, A) 
+
+isfiltruoti_kontaktus <- NULL
 #----------
 # TLS be CV 
 
@@ -249,101 +284,103 @@ apsk_ir_teor_temp_is_visu <- cbind(pdb_tm_wt_mut_visi_stulpeliai, data.frame(aps
 
 apsk_ir_teor_temp_is_visu
 
-saveRDS(apsk_ir_teor_temp_is_visu, file = 
-  paste0("rds-failai/apsk_ir_teor_temp_is_visu-",atom_types,".rds"))
+# saveRDS(apsk_ir_teor_temp_is_visu, file = 
+#   paste0("rds-failai/apsk_ir_teor_temp_is_visu-",atom_types,".rds"))
 
 #------
 r2_is_visu <- apsk_ir_teor_temp_is_visu %>% 
   mutate(r2 = (deltaTm - apsk_temp_is_visu)^2) %>% 
   summarise(r2 = round(sum(r2), 2))
 
-# LOOCV
+#LOOCV
 # #------
-# eil_skaicius <- nrow(duomenys_cv)
-# apsk_temp_loo_cv <- data.frame()
-# 
-# for (i in 1:eil_skaicius) {
-# print(i)
-# #Duomenys suskirstomi i train ir test
-# train_loo <- duomenys_cv[-i,]
-# test_loo <- duomenys_cv[i,]
-# 
-# #Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
-# train_loo_teor_temp <- train_loo[,1]
-# train_loo_kontaktai <- train_loo[,-1]
-# 
-# #Apskaiciuojami koeficientai
-# koef_loo <- pracma::qrSolve(as.matrix(train_loo_kontaktai), as.matrix(train_loo_teor_temp))
-# 
-# #5
-# #Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
-# test_loo_teor_temp <- test_loo[,1]
-# test_loo_kontaktai <- test_loo[,-1]
-# 
-# #Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
-# apsk_temp_loo_eil <- as.matrix(test_loo_kontaktai) %*% koef_loo
-# 
-# #Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
-# apsk_temp_loo_cv <- rbind(apsk_temp_loo_cv, data.frame(apsk_temp_loo_eil))
-# }
-# 
-# apsk_ir_teor_temp_loo_cv <- data.frame(cbind(pdb_tm_wt_mut_visi_stulpeliai, apsk_temp_loo_cv)) %>% 
-#   rename("apsk_temp_loo" = "apsk_temp_loo_eil")
-# 
-# saveRDS(apsk_ir_teor_temp_loo_cv, file = 
-#   paste0("rds-failai/apsk_ir_teor_temp_loo_cv-",atom_types,".rds"))
-# 
-# r2_cv_loo <- apsk_ir_teor_temp_loo_cv %>% 
-#   mutate(r2 = (deltaTm - apsk_temp_loo)^2) %>% 
-#   summarise(r2 = round(sum(r2), 2))
+eil_skaicius <- nrow(duomenys_cv)
+apsk_temp_loo_cv <- data.frame()
+
+for (i in 1:eil_skaicius) {
+print(i)
+#Duomenys suskirstomi i train ir test
+train_loo <- duomenys_cv[-i,]
+test_loo <- duomenys_cv[i,]
+
+#Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+train_loo_teor_temp <- train_loo[,1]
+train_loo_kontaktai <- train_loo[,-1]
+
+#Apskaiciuojami koeficientai
+koef_loo <- pracma::qrSolve(as.matrix(train_loo_kontaktai), as.matrix(train_loo_teor_temp))
+
+#5
+#Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+test_loo_teor_temp <- test_loo[,1]
+test_loo_kontaktai <- test_loo[,-1]
+
+#Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+apsk_temp_loo_eil <- as.matrix(test_loo_kontaktai) %*% koef_loo
+
+#Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+apsk_temp_loo_cv <- rbind(apsk_temp_loo_cv, data.frame(apsk_temp_loo_eil))
+}
+
+apsk_ir_teor_temp_loo_cv <- data.frame(cbind(pdb_tm_wt_mut_visi_stulpeliai, apsk_temp_loo_cv)) %>%
+  rename("apsk_temp_loo" = "apsk_temp_loo_eil")
+
+saveRDS(apsk_ir_teor_temp_loo_cv, file =
+  paste0("rds-failai/apsk_ir_teor_temp_loo_cv-",atom_types,".rds"))
+
+r2_cv_loo <- apsk_ir_teor_temp_loo_cv %>%
+  mutate(r2 = (deltaTm - apsk_temp_loo)^2) %>%
+  summarise(r2 = round(sum(r2), 2))
 
 # Visi grafikai:
 
 be_cv_grafikas <- ggplot(apsk_ir_teor_temp_is_visu) +
-aes(x = deltaTm, y = apsk_temp_is_visu, color = pH_grupe) +
+aes(x = deltaTm, y = apsk_temp_is_visu, color = WT) +
     labs(x = "Teorinis temperaturu skirtumas",
          y = "Apskaiciuotas temperaturu skirtumas",
          title = paste0("Be CV (", atom_types, ")"),
-         subtitle = paste0("r2 = ",r2_is_visu))+
+         subtitle = paste0("r2 = ",r2_is_visu)
+       ) +
  geom_point(size = 1L) +
- theme_minimal() +
- facet_wrap(~WT)
-
-# cv_loo_grafikas <- ggplot(apsk_ir_teor_temp_loo_cv) +
-#  aes(x = deltaTm, y = apsk_temp_loo, color = pH_grupe) +
-#     labs(x = "Teorinis temperaturu skirtumas",
-#          y = "Apskaiciuotas temperaturu skirtumas",
-#          title = paste0("LOOCV (", atom_types, ")"),
-#          subtitle = paste0("r2 = ", r2_cv_loo)
-#          ) +
-#  geom_point(size = 1L) +
-#  theme_minimal() +
-#  facet_wrap(~WT)
+  theme_light()
 # 
-# cv_loo_grafikas_filtered <- ggplot(apsk_ir_teor_temp_loo_cv %>% filter(apsk_temp_loo > (-100) & apsk_temp_loo < 100)) +
-#  aes(x = deltaTm, y = apsk_temp_loo, color = pH_grupe) +
-#     labs(x = "Teorinis temperaturu skirtumas",
-#          y = "Apskaiciuotas temperaturu skirtumas",
-#          title = paste0("LOOCV (", atom_types, ")"),
-#          subtitle = paste0("r2 = ", r2_cv_loo)) +
-#  geom_point(size = 1L) +
-#  theme_minimal() +
-#  facet_wrap(~WT)
+cv_loo_grafikas <- ggplot(apsk_ir_teor_temp_loo_cv) +
+ aes(x = deltaTm, y = apsk_temp_loo, color = WT) +
+    labs(x = "Teorinis temperaturu skirtumas",
+         y = "Apskaiciuotas temperaturu skirtumas",
+         title = paste0("LOOCV (", atom_types, ")"),
+         subtitle = paste0("r2 = ", r2_cv_loo)
+         ) +
+ geom_point(size = 1L) +
+ theme_light()
 
-ggsave(be_cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+cv_loo_grafikas_filtered <- ggplot(apsk_ir_teor_temp_loo_cv %>% filter(apsk_temp_loo > (-100) & apsk_temp_loo < 100)) +
+ aes(x = deltaTm, y = apsk_temp_loo, color = WT) +
+    labs(x = "Teorinis temperaturu skirtumas",
+         y = "Apskaiciuotas temperaturu skirtumas",
+         title = paste0("LOOCV (", atom_types, ")"),
+         subtitle = paste0("r2 = ", r2_cv_loo)) +
+ geom_point(size = 1L) +
+ theme_light()
 
+# ggsave(be_cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv.jpeg") ,path = "/Users/user/Desktop")
+# 
 # ggsave(cv_loo_grafikas, device = "jpeg",filename = paste0(atom_types, "_loo_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
 # 
 # ggsave(cv_loo_grafikas_filtered, device = "jpeg",filename = paste0(atom_types, "_loo_cv_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+}
 }
 be_cv_grafikas
-# cv_loo_grafikas
-# cv_loo_grafikas_filtered
+cv_loo_grafikas
+cv_loo_grafikas_filtered
 
 ```
 
 
-
+```{r}
+ggplot_to_ppt("cv_loo_grafikas_filtered")
+```
 
 
 
@@ -387,6 +424,7 @@ nuline_lentele_atomu <- nuline_lentele_atomu %>%
   select(-"solvent-solvent")
 
 #----
+skaicius <- 0
 for (i in pdb_termo_lent$pdb) {
 lizocimo_kontaktai <- data.table::fread(paste("./lizocimai/",i,".contacts.interatom.table", sep = ""), na.strings = ".")
 
@@ -396,7 +434,8 @@ lizocimo_kontaktai <- lizocimo_kontaktai %>%
 
 kontaktu_sumos_atom <- fun_atomu_grupiu_sumoms(lizocimo_kontaktai,  grupavimo_lentele, nuline_lentele_atomu)
 
-print(i)
+skaicius <- skaicius +1
+print(skaicius)
 
 
 
@@ -411,16 +450,19 @@ return(list(visu_baltymu_kont_sumos_absoliucios = as.matrix(visu_baltymu_kont_su
 
 ```
 
-Skaiciavimai: (TLS)
+Skaiciavimai: (naudojant su skirtumais issprestus TLS sprendimus)
 ```{r, message=FALSE}
 # TLS be CV 
 
-tls_sprendimas_visi_baltymai <- pracma::qrSolve(A, b) #A ir b naudojamos is kodo auksciau
+#tls_sprendimas_visi_baltymai <- pracma::qrSolve(A, b) #A ir b naudojamos is kodo auksciau
+#VEIKIA JEI IVYKDYTAS KODAS AUKSCIAU
 
 absoliucios_kontaktu_reiksmes <- fun_matricu_paruosimas_absoliuciom_reiksmem(pdb_termo_lent = pdb_tm_wt_mut, grupavimo_failas = grupavimo_failas)
 
+absoliucios_kontaktu_reiksmes_sutvarkyta <- data.table(absoliucios_kontaktu_reiksmes$visu_baltymu_kont_sumos_absoliucios) %>% .[,-c("HIS-LYS", "PRO-PRO","TRP-TRP", "PRO-TRP")] %>% as.matrix()
+
 apsk_absoliucios_temp_is_visu <- 
-  absoliucios_kontaktu_reiksmes$visu_baltymu_kont_sumos_absoliucios[,-c(144, 204, 208, 225)] %*% tls_sprendimas_visi_baltymai
+  absoliucios_kontaktu_reiksmes_sutvarkyta %*% tls_sprendimas_visi_baltymai
 
 apsk_ir_teor_absoliucios_temp_is_visu <- cbind(pdb_tm_wt_mut_visi_stulpeliai, data.frame(apsk_absoliucios_temp_is_visu)) 
 
@@ -482,10 +524,9 @@ nuline_lentele_atomu <- nuline_lentele_atomu %>%
   transpose(make.names = "kontakto_tipas")%>% 
   select(-"solvent-solvent")
 
-pavadinimai <- nuline_lentele_atomu %>%
+pavadinimai <- data.table(nuline_lentele_atomu) %>% .[,-c("HIS-LYS","PRO-PRO","TRP-TRP", "PRO-TRP")] %>%
   transpose(keep.names = "kontakto_tipas") %>% 
-  slice(-c(144, 204, 208, 225)) %>% 
-  select(-V1)
+  select(-V1) 
 ```
 
 Koeficientai su pavadinimais:
@@ -496,24 +537,24 @@ koef_su_pavad
 
 Patikrinimas, kurie kontaktai wt ir wtx grupese yra reti:
 ```{r}
-kontaktu_sumos_ir_visa_kita <- cbind(absoliucios_kontaktu_reiksmes$visu_baltymu_kont_sumos_absoliucios[,-c(144, 204, 208, 225)], apsk_ir_teor_absoliucios_temp_is_visu)
+kontaktu_sumos_ir_visa_kita <- cbind(absoliucios_kontaktu_reiksmes, apsk_ir_teor_absoliucios_temp_is_visu)
 
 #Bendrai ir wt ir wtx
-kontaktu_sumos_wt_ir_wtx <- kontaktu_sumos_ir_visa_kita %>% 
-  select(c(1:226))
+kontaktu_sumos_wt_ir_wtx <- kontaktu_sumos_ir_visa_kita %>% .[,c(1:ncol(absoliucios_kontaktu_reiksmes))]
 
 kontaktu_sumos_wt_ir_wtx_susumuotos <- kontaktu_sumos_wt_ir_wtx %>% 
   summarise_all(n_distinct)
 
-kontaktu_sumos_wt_ir_wtx_susumuotos[which(kontaktu_sumos_wt_ir_wtx_susumuotos < 4)] %>% 
+kontaktu_sumos_wt_ir_wtx_susumuotos[which(kontaktu_sumos_wt_ir_wtx_susumuotos < 100)] %>% 
   transpose(keep.names = "pavadinimai") %>% 
   rename("wt_ir_wtx" = "V1")
 
 #isskiriamos dvi grupes, pagal kurias susumuojami kontaktai: wt ir wtx
 #wt
 kontaktu_sumos_tik_wt <- kontaktu_sumos_ir_visa_kita %>% 
-  filter(WT == "wt") %>% 
-  select(c(1:226))
+  filter(WT == "wt") %>%
+  .[,c(1:ncol(absoliucios_kontaktu_reiksmes))]
+
 
 kontaktu_sumos_tik_wt_susumuotos <- kontaktu_sumos_tik_wt %>% 
   summarise_all(n_distinct)
@@ -525,7 +566,7 @@ kontaktu_sumos_tik_wt_susumuotos[which(kontaktu_sumos_tik_wt_susumuotos < 3)] %>
 #wtx
 kontaktu_sumos_tik_wtx <- kontaktu_sumos_ir_visa_kita %>% 
   filter(WT == "wtx") %>% 
-  select(c(1:226))
+  .[,c(1:ncol(absoliucios_kontaktu_reiksmes))]
 
 kontaktu_sumos_tik_wtx_susumuotos <- kontaktu_sumos_tik_wtx %>% 
   summarise_all(n_distinct)
@@ -538,8 +579,9 @@ kontaktu_sumos_tik_wtx_susumuotos[which(kontaktu_sumos_tik_wtx_susumuotos < 3)] 
  
 ```
 
-
+### Bandymai, tikrinimai
 BANDYMAI, veliau sitrinti:
+tikrinami wt ir wtx kurie plotai turi didziausia skirtuma:
 ```{r}
 #wtx ir wt standartiniu lenteliu sukurimas
 lizocimo_kontaktai_wt <- data.table::fread("./lizocimai/2LZM.contacts.interatom.table", na.strings = ".")
@@ -560,3 +602,293 @@ wtx_atom <- fun_atomu_grupiu_sumoms(lizocimo_kontaktai_wtx,  grupavimo_lentele, 
 
 rbind(wtx_atom,wt_atom)
 ```
+
+
+## Grafikas su teorinem ir apskaiciuotu skirtumu pripliusavimas:
+
+```{r}
+
+teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT <- cbind(pdb_tm_wt_mut_visi_stulpeliai,apsk_absoliucios_Tm = apsk_absoliucios_temp_is_visu, apsk_deltaTm = apsk_temp_is_visu) %>% 
+  mutate(apskdeltaTm_plius_WTTm = ifelse(WT == "wt", (apsk_deltaTm + 67.2), (apsk_deltaTm + 65.8))) %>% data.frame()
+
+teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT
+
+teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT_grafikas <- ggplot(teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT) +
+aes(x = Tm, y = apskdeltaTm_plius_WTTm, color = WT) +
+    labs(x = "Teorines temperaturos",
+         y = "Apskaiciuotos temperaturos (skirtumas + WT_Tm)"
+     #    title = paste0("Be CV, absoliucios (", atom_types, ")"),
+         )+
+ geom_point(size = 1L) +
+ theme_minimal()
+
+apsk_absoliuscios_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT <- ggplot(teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT) +
+aes(x = apsk_absoliucios_Tm, y = apskdeltaTm_plius_WTTm, color = WT) +
+    labs(x = "Absoliucios apskaiciuotos temperaturos",
+         y = "Apskaiciuotos temperaturos (skirtumas + WT_Tm)"
+ #        title = paste0("Be CV, absoliucios (", atom_types, ")"),
+ )+
+ geom_point(size = 1L) +
+ theme_minimal()
+
+teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT_grafikas
+apsk_absoliuscios_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT
+
+ggsave(teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT_grafikas, device = "jpeg",filename = paste0(atom_types, "teor_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT_grafikas_be_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+ggsave(apsk_absoliuscios_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT, device = "jpeg",filename = paste0(atom_types, "apsk_absoliuscios_Tm_ir_apskaiciuoti_skirtumai_prideti_prie_WT_be_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+
+```
+
+
+
+
+
+## VISI SKAICIAVIMAI NE SU SKIRTUMAIS O VISKAS SU ABSOLIUCIOM REIKSMEM (VISISKAI ATSKIRI SKAICIAVIMAI)
+```{r, message=FALSE}
+
+isfiltruota_pdb_tm_wt_mut <- pdb_tm_wt_mut %>% filter(!(pdb %in% as.vector(reiketu_isfiltruoti$pdb))) # NEPAVYKO NES ISFILTRAVUS LIEKA PER MAZAI KONTAKTU KAI KUR, TIKSLIAU 0 TODEL SALINAMI NE BALTYMAI, O KONTAKTAI
+isfiltruota_pdb_tm_wt_mut_visi_stulpeliai <- pdb_tm_wt_mut_visi_stulpeliai %>% filter(!(pdb %in% as.vector(reiketu_isfiltruoti$pdb)))
+
+absoliucios_kontaktu_reiksmes <- fun_matricu_paruosimas_absoliuciom_reiksmem(pdb_termo_lent = isfiltruota_pdb_tm_wt_mut, grupavimo_failas = grupavimo_failas) #REIKIA UZKRAUTI FUNKCIJA KURI YRA SIEK TIEK AUKSCIAU
+
+#TLS
+AA <- data.table(absoliucios_kontaktu_reiksmes$visu_baltymu_kont_sumos_absoliucios) %>% .[,-c("HIS-LYS", "PRO-PRO","TRP-TRP", "PRO-TRP")] %>% as.matrix()
+bb <- isfiltruota_pdb_tm_wt_mut_visi_stulpeliai$Tm %>% as.matrix
+duomenys_cv_abs <- data.frame(bb, AA) 
+
+#Patikrinimas, kiek yra eiluciu, kuriose tik 1-2 baltymai su tuo kontakto tipu
+AA_susumuotos <- data.table(AA) %>% 
+  summarise_all(n_distinct)
+
+print(AA_susumuotos[which(AA_susumuotos < 4)] %>% 
+  transpose(keep.names = "pavadinimai") %>% 
+  rename("wt_ir_wtx" = "V1"))
+
+
+
+koef_absoliutusTLS <- 
+  pracma::qrSolve(AA, bb)
+
+apsk_temp_absoliutusTLS <- 
+  AA %*% koef_absoliutusTLS
+
+apsk_ir_teor_temp_absoliutusTLS_is_visu <- cbind(isfiltruota_pdb_tm_wt_mut_visi_stulpeliai, data.frame(apsk_temp_absoliutusTLS)) 
+
+apsk_ir_teor_temp_absoliutusTLS_is_visu
+
+saveRDS(apsk_ir_teor_temp_absoliutusTLS_is_visu, file = 
+  paste0("rds-failai/apsk_ir_teor_temp_absoliutusTLS_is_visu-",atom_types,".rds"))
+
+apsk_ir_teor_temp_absoliutusTLS_is_visu_grafikas <- ggplot(apsk_ir_teor_temp_absoliutusTLS_is_visu) +
+aes(x = Tm, y = apsk_temp_absoliutusTLS, color = WT) +
+    labs(x = "Teorines temperaturos",
+         y = "Apskaiciuotos temperaturos ",
+        title = paste0("Absoliutus  TLS, Be CV (", atom_types, ")")
+ ) +
+ geom_point(size = 1L) +
+ theme_minimal()
+ 
+ggsave(apsk_ir_teor_temp_absoliutusTLS_is_visu_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv_abs.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+ 
+# #---------
+# #LOOCV
+# eil_skaicius_abs <- nrow(duomenys_cv_abs)
+# apsk_temp_loo_cv_abs <- data.frame()
+# 
+# for (i in 1:eil_skaicius_abs) {
+# print(i)
+# #Duomenys suskirstomi i train ir test
+# train_loo_abs <- duomenys_cv_abs[-i,]
+# test_loo_abs <- duomenys_cv_abs[i,]
+# 
+# #Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+# train_loo_teor_temp_abs <- train_loo_abs[,1]
+# train_loo_kontaktai_abs <- train_loo_abs[,-1]
+# 
+# #Apskaiciuojami koeficientai
+# koef_loo_abs <- pracma::qrSolve(as.matrix(train_loo_kontaktai_abs), as.matrix(train_loo_teor_temp_abs))
+# 
+# #5
+# #Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+# test_loo_teor_temp_abs <- test_loo_abs[,1]
+# test_loo_kontaktai_abs <- test_loo_abs[,-1]
+# 
+# #Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+# apsk_temp_loo_eil_abs <- as.matrix(test_loo_kontaktai_abs) %*% koef_loo_abs
+# 
+# #Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+# apsk_temp_loo_cv_abs <- rbind(apsk_temp_loo_cv_abs, data.frame(apsk_temp_loo_eil_abs))
+# }
+# 
+# apsk_ir_teor_temp_loo_cv_abs <- data.frame(cbind(pdb_tm_wt_mut_visi_stulpeliai, apsk_temp_loo_cv_abs)) %>%
+#   rename("apsk_temp_loo_abs" = "apsk_temp_loo_eil_abs")
+# 
+# saveRDS(apsk_ir_teor_temp_loo_cv_abs, file =
+#   paste0("rds-failai/apsk_ir_teor_temp_loo_cv-abs",atom_types,".rds"))
+# 
+# #grafikai
+# cv_loo_grafikas_abs <- ggplot(apsk_ir_teor_temp_loo_cv_abs) +
+#  aes(x = Tm, y = apsk_temp_loo_abs, color = pH_grupe) +
+#     labs(x = "Teorines temperaturos",
+#          y = "Apskaiciuotos temperaturos",
+#          title = paste0("LOOCV_abs (", atom_types, ")")
+#          ) +
+#  geom_point(size = 1L) +
+#  theme_minimal() 
+# 
+# cv_loo_grafikas_abs_filtered <- ggplot(apsk_ir_teor_temp_loo_cv_abs %>% filter(apsk_temp_loo_abs > (-100) & apsk_temp_loo_abs < 100)) +
+#  aes(x = Tm, y = apsk_temp_loo_abs, color = pH_grupe) +
+#     labs(x = "Teorines temperaturos",
+#          y = "Apskaiciuotos temperaturos",
+#          title = paste0("LOOCV_abs_filtered (", atom_types, ")")
+#          ) +
+#  geom_point(size = 1L) +
+#  theme_minimal() 
+# 
+# 
+# ggsave(cv_loo_grafikas_abs, device = "jpeg",filename = paste0(atom_types, "_loo_cv_abs.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+# 
+# ggsave(cv_loo_grafikas_abs_filtered, device = "jpeg",filename = paste0(atom_types, "_loo_cv_abs_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+# 
+# cv_loo_grafikas_abs
+# cv_loo_grafikas_abs_filtered
+# apsk_ir_teor_temp_absoliutusTLS_is_visu_grafikas
+# 
+
+```
+
+
+### Perskaiciavimai su z transformacija ir atemimas koef kurie daugiau nei 2SD, naudojant tls sprendima
+```{r}
+koef_abs <- as.vector(koef_absoliutusTLS) 
+vidurkis_ir_sd <- koef_abs %>% 
+  data.frame() %>%
+  summarise(koef_vidurkis = mean(koef_abs),
+            koef_sd = sd(koef_abs),
+            sdX2 = 2*sd(koef_abs))
+
+vidurkis_ir_sd
+koef_abs_z_pakeitimai <- koef_abs %>% data.frame() %>% 
+  mutate(koef_abs_z = ifelse(koef_abs > vidurkis_ir_sd$sdX2, 2, koef_abs)) %>% 
+  mutate(koef_abs_z = ifelse(koef_abs_z < -vidurkis_ir_sd$sdX2, -2, koef_abs_z))
+
+
+apsk_temp_abs_z <- 
+  AA %*% koef_abs_z_pakeitimai$koef_abs_z
+
+apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu <- cbind(pdb_tm_wt_mut_visi_stulpeliai, data.frame(apsk_temp_abs_z)) 
+
+apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu_grafikas <- ggplot(apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu %>% filter(apsk_temp_abs_z < 100)) +
+aes(x = Tm, y = apsk_temp_abs_z, color = WT) +
+    labs(x = "Teorines temperaturos",
+         y = "Apskaiciuotos temperaturos, SD>2 pakeitus i 2",
+        title = paste0("Absoliutus  TLS, Be CV, z pakeitimai (", atom_types, ")")
+ ) +
+ geom_point(size = 1L) +
+ theme_minimal()
+
+ggsave(apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu_grafikas, device = "jpeg",filename = paste0(atom_types, "apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+ apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu_grafikas
+
+```
+
+```{r}
+reiketu_isfiltruoti <- apsk_ir_teor_temp_absoliutusTLS_z_pakeitimai_is_visu %>% 
+  filter(apsk_temp_abs_z > 100 | apsk_temp_abs_z < 40 )
+
+reiketu_isfiltruoti
+```
+
+
+
+
+LOOCV su z pakeitimais
+```{r}
+eil_skaicius_abs <- nrow(duomenys_cv_abs)
+apsk_temp_loo_cv_abs_z <- data.frame()
+
+for (i in 1:eil_skaicius_abs) {
+print(i)
+#Duomenys suskirstomi i train ir test
+train_loo_abs <- duomenys_cv_abs[-i,]
+test_loo_abs <- duomenys_cv_abs[i,]
+
+#Atskiriamas train temperaturos stulpelis nuo kontaktu plotu stulpeliu
+train_loo_teor_temp_abs <- train_loo_abs[,1]
+train_loo_kontaktai_abs <- train_loo_abs[,-1]
+
+#Apskaiciuojami koeficientai
+koef_loo_abs <- pracma::qrSolve(as.matrix(train_loo_kontaktai_abs), as.matrix(train_loo_teor_temp_abs))
+
+#5
+#Atskiriamas test temperaturos stulpelis nuo kontaktu plotu stulpeliu
+test_loo_teor_temp_abs <- test_loo_abs[,1]
+test_loo_kontaktai_abs <- test_loo_abs[,-1]
+
+
+#----- naujas zingsnis, z pakeitimai
+koef_loo_abs <- as.vector(koef_loo_abs) 
+
+vidurkis_ir_sd_loo <- koef_loo_abs %>% 
+  data.frame() %>%
+  summarise(koef_vidurkis = mean(koef_loo_abs),
+            koef_sd = sd(koef_loo_abs),
+            sdX2 = 2*sd(koef_loo_abs))
+
+koef_loo_abs_z_pakeitimai <- koef_loo_abs %>% data.frame() %>% 
+  mutate(koef_loo_abs_z = ifelse(koef_loo_abs > vidurkis_ir_sd_loo$sdX2, 2, koef_loo_abs)) %>% 
+  mutate(koef_loo_abs_z = ifelse(koef_loo_abs_z < -vidurkis_ir_sd_loo$sdX2, -2, koef_loo_abs_z))
+
+#-------
+#Apskaiciuojamos temperaturos (test_kontaktaiXkoef)
+apsk_temp_loo_eil_abs_z <- as.matrix(test_loo_kontaktai_abs) %*% koef_loo_abs_z_pakeitimai$koef_loo_abs_z
+
+#Sudaroma teoriniu ir apskaiciuotu temperaturu lentele
+apsk_temp_loo_cv_abs_z <- rbind(apsk_temp_loo_cv_abs_z, data.frame(apsk_temp_loo_eil_abs_z))
+}
+
+apsk_ir_teor_temp_loo_cv_abs_z <- data.frame(cbind(pdb_tm_wt_mut_visi_stulpeliai, apsk_temp_loo_cv_abs_z)) %>%
+  rename("apsk_temp_loo_abs_z_pak" = "apsk_temp_loo_eil_abs_z")
+
+saveRDS(apsk_ir_teor_temp_loo_cv_abs_z, file =
+  paste0("rds-failai/apsk_ir_teor_temp_loo_cv-abs_z",atom_types,".rds"))
+
+#grafikai
+cv_loo_grafikas_abs_z <- ggplot(apsk_ir_teor_temp_loo_cv_abs_z) +
+ aes(x = Tm, y = apsk_temp_loo_abs_z_pak, color = pH_grupe) +
+    labs(x = "Teorines temperaturos",
+         y = "Apskaiciuotos temperaturos (SD>2 pakeitus i 2)",
+         title = paste0("LOOCV_abs_z (", atom_types, ")")
+         ) +
+ geom_point(size = 1L) +
+ theme_minimal()
+
+cv_loo_grafikas_abs_z_filtered <- ggplot(apsk_ir_teor_temp_loo_cv_abs_z %>% filter(apsk_temp_loo_abs_z_pak > (-100) & apsk_temp_loo_abs_z_pak < 100)) +
+ aes(x = Tm, y = apsk_temp_loo_abs_z_pak, color = pH_grupe) +
+    labs(x = "Teorines temperaturos",
+         y = "Apskaiciuotos temperaturos (SD>2 pakeitus i 2)",
+         title = paste0("LOOCV_abs_z_filtered (", atom_types, ")")
+         ) +
+ geom_point(size = 1L) +
+ theme_minimal()
+
+
+ggsave(cv_loo_grafikas_abs_z, device = "jpeg",filename = paste0(atom_types, "_loo_cv_abs_z.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+ggsave(cv_loo_grafikas_abs_z_filtered, device = "jpeg",filename = paste0(atom_types, "_loo_cv_abs_z_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+cv_loo_grafikas_abs_z
+cv_loo_grafikas_abs_z_filtered
+
+
+
+```
+
+
+
+
+
