@@ -1,0 +1,107 @@
+---
+title: "bendras skaiciavimas"
+author: "Ema Malinauskaite"
+date: "5/6/2020"
+output: html_document
+---
+
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+library("matlib")
+library("pracma")
+library("readr")
+library("caret")
+library(modelr)
+library("esquisse")
+#library("rapportools")
+set.seed(6)
+```
+
+```{r}
+lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
+head(lizocimai_pagr)
+```
+
+```{r}
+lizocimai_pagr %>% 
+count(WT)
+
+lizocimai_pagr %>% 
+#  group_by(WT) %>% 
+  summarise(suma = n(), 
+  turi_pdb = sum(!is.na(pdb)), 
+  turi_Tm = sum(!is.na(Tm)))
+```
+
+```{r}
+r2_is_visu_lm <- lm(deltaTm ~ ddeltaG, data=lizocimai_pagr)
+r2_is_visu <- summary(r2_is_visu_lm)$r.squared 
+r2_is_visu
+```
+
+
+
+grafikiukas su grupavimais:
+```{r}
+grupiu_pilna_lentele <- data.frame()
+
+for(atom_types_parsiuntimui in c("RESIDUE"
+)) {
+
+
+ grupavimo_failas <- data.table::fread(paste0("/Users/user/Desktop/praktika/r-praktika/atom_types/",atom_types_parsiuntimui, ".atoms"), 
+  dec = ".", header = FALSE, skip = 1, encoding = "UTF-8", fill = TRUE,
+  data.table = FALSE
+)
+ 
+ grupavimo_lentele <- grupavimo_failas %>% 
+  mutate_all(na_if,"") %>% 
+  tibble::column_to_rownames(var = "V1") #!!!!!!!!!!!!!
+
+grupiu_skaicius <- nrow(grupavimo_lentele) %>% data.frame()
+grupiu_pilna_lentele <- rbind(grupiu_pilna_lentele, grupiu_skaicius)
+
+}
+
+grupiu_pilna_lentele <- rbind(grupiu_pilna_lentele, c(19) %>% data.frame())
+
+grupiu_pilna_lentele
+
+grupavimo_failas
+grupavimo_lentele
+```
+
+
+```{r}
+pav5<-ggplot(apsk_ir_teor_temp_is_visu_res_mcsc_bakiui_pasalinus_110_111_116_119_pasalinus_indel) +
+ aes(x = apsk_temp_is_visu, y = deltaTm) +
+ geom_point(size = 1L, colour = "#7301a8") +
+ theme_minimal() +
+ geom_abline()
+
+ggplot_to_ppt("pav5")
+```
+
+```{r}
+apsk_ir_teor_temp_loo_cv_res_mcsc_bakiui_pasalinus_110_111_116_119_loocv_be_delins_subset <- 
+  apsk_ir_teor_temp_loo_cv_res_mcsc_bakiui_pasalinus_110_111_116_119_loocv_be_delins %>%
+  dplyr::filter(apsk_temp_loo < 100 & apsk_temp_loo > -100)
+```
+
+
+```{r}
+pav6<-ggplot(apsk_ir_teor_temp_loo_cv_res_mcsc_bakiui_pasalinus_110_111_116_119_loocv_be_delins_subset) +
+ aes(x = apsk_temp_loo, y = deltaTm) +
+ geom_point(size = 1L, colour = "#ef3b2c") +
+ theme_minimal() +
+ geom_abline()
+
+ggplot_to_ppt("pav6")
+```
+
+
+

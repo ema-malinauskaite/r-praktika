@@ -115,8 +115,7 @@ pav3 <- ggplot(lizocimai_stat_WT_T) +
 pav3
 ```
 
-```{r}
-```
+
 Lyginama deltaG wt ir wt*:
 ```{r}
 ggplot(lizocimai_stat_WT_G) +

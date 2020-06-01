@@ -1,0 +1,237 @@
+---
+title: "bendras skaiciavimas"
+author: "Ema Malinauskaite"
+date: "5/6/2020"
+output: html_document
+---
+
+Idejos ka deti i baki:
+```{r}
+##skaiciuoja kiek distinct values yra kiekviename kontaktu sumu stulpelyje, ty, kiek baltymu turi ta kontakta/-us, galima pabraizyti grafikeli, veikia paleidus visa koda zemiau
+# A_skaiciavimai <- A_df %>% 
+#   summarise_all(n_distinct)
+```
+
+
+```{r include=FALSE}
+library("tidyverse")
+library("data.table")
+library("compareDF")
+library("tidyr")
+library("matlib")
+library("pracma")
+library("readr")
+library("caret")
+library(modelr)
+library("esquisse")
+#library("rapportools")
+set.seed(6)
+```
+
+```{r}
+lizocimai_pagr_su_mutacijom <- readr::read_rds("./data/lizocimai_pagr_su_mutacijom.rds")
+
+```
+
+Is visu, su skirtumais:
+```{r}
+r2_lentele_is_visu_skirtumai <- data.frame()
+for(atom_types_parsiuntimui in c("RJ", "JGMLL", "CHARMM19", "ZVCD", "TVG", "VS", "OPLS", "GROMOS53", "MPWACW", "FTA", "ENCAD", "CHARMM22", "AMBER", "RES_MCSC", "RESIDUE", "ROSETTA", "EM", "R", "GTL", "CSNO", "DK", "MF", "SZXLS"
+)) {
+try ({
+print(atom_types_parsiuntimui)
+
+atom_types <- paste0(atom_types_parsiuntimui, "_BAKIUI_pasalinus_110_111_116_119")
+
+r2_is_visu_skirtumai <- readr::read_rds(paste0("/Users/user/Desktop/praktika/r-praktika/rds-failai/r2_is_visu-",atom_types, ".rds")) %>% data.frame()  %>% rename( "R2_is_visu_skirtumai" = ".")
+
+ grupavimo_tipas <- atom_types %>% data.frame() %>% rename( "Grupavimo_tipas" = ".")
+ 
+ r2_eilute_is_visu_skirtumai <- cbind(grupavimo_tipas, round(r2_is_visu_skirtumai, 4))
+
+r2_lentele_is_visu_skirtumai <- rbind(r2_lentele_is_visu_skirtumai, r2_eilute_is_visu_skirtumai) 
+
+})
+}
+
+saveRDS(r2_lentele_is_visu_skirtumai, file = 
+  paste0("r2-failai/r2-lentele-is_visu_skirtumai",atom_types,".rds"))
+
+r2_lentele_is_visu_skirtumai
+
+```
+
+Is visu, absoliutus:
+```{r}
+r2_lentele_is_visu_abs <- data.frame()
+for(atom_types_parsiuntimui in c("RJ", "JGMLL", "CHARMM19", "ZVCD", "TVG", "VS", "OPLS", "GROMOS53", "MPWACW", "FTA", "ENCAD", "CHARMM22", "AMBER", "RES_MCSC", "RESIDUE", "ROSETTA", "EM", "R", "GTL", "CSNO", "DK", "MF", "SZXLS"
+)) {
+try ({
+print(atom_types_parsiuntimui)
+
+atom_types <- paste0(atom_types_parsiuntimui, "__BAKIUI_pasalinus_110_111_116_119")
+
+r2_is_visu_abs <- readr::read_rds(paste0("/Users/user/Desktop/praktika/r-praktika/rds-failai/r2_is_visu_abs_",atom_types, ".rds")) %>% data.frame() %>% rename( "R2_is_visu_abs" = ".")
+
+ grupavimo_tipas <- atom_types %>% data.frame() %>% rename( "Grupavimo_tipas" = ".")
+ 
+ r2_eilute_is_visu_abs <- cbind(grupavimo_tipas, round(r2_is_visu_abs, 4))
+
+r2_lentele_is_visu_abs <- rbind(r2_lentele_is_visu_abs, r2_eilute_is_visu_abs)
+
+})
+}
+
+saveRDS(r2_lentele_is_visu_abs, file = 
+  paste0("r2-failai/r2-lentele-is_visu_abs",atom_types,".rds"))
+
+r2_lentele_is_visu_abs
+
+```
+
+Sujungta is visu skirtumai ir abs:
+```{r}
+cbind(r2_lentele_is_visu_skirtumai, r2_lentele_is_visu_abs$R2_is_visu_abs) %>% 
+  mutate(skirtumas = R2_is_visu_skirtumai - r2_lentele_is_visu_abs$R2_is_visu_abs)
+```
+
+#Lyginimas su delins ir visais
+Is visu, be delins:
+```{r}
+r2_lentele_is_visu_be_delins <- data.frame()
+for(atom_types_parsiuntimui in c("RJ", "JGMLL", "CHARMM19", "ZVCD", "TVG", "VS", "OPLS", "GROMOS53", "MPWACW", "FTA", "ENCAD", "CHARMM22", "AMBER", "RES_MCSC", "RESIDUE", "ROSETTA", "EM", "R", "GTL", "CSNO", "DK", "MF", "SZXLS"
+)) {
+try ({
+print(atom_types_parsiuntimui)
+
+atom_types <- paste0(atom_types_parsiuntimui, "_BAKIUI_pasalinus_110_111_116_119_pasalinus_indel")
+
+r2_be_delins <- readr::read_rds(paste0("/Users/user/Desktop/praktika/r-praktika/rds-failai/r2_is_visu-",atom_types, ".rds")) %>% data.frame() %>% rename( "R2_is_visu_be_delins" = ".")
+
+ grupavimo_tipas <- atom_types %>% data.frame() %>% rename( "Grupavimo_tipas" = ".")
+ 
+ r2_eilute_is_visu_be_delins <- cbind(grupavimo_tipas, round(r2_be_delins, 4))
+
+r2_lentele_is_visu_be_delins <- rbind(r2_lentele_is_visu_be_delins, r2_eilute_is_visu_be_delins)
+
+})
+}
+
+saveRDS(r2_lentele_is_visu_be_delins, file = 
+  paste0("r2-failai/r2-lentele-is_visu_be_delins",atom_types,".rds"))
+
+r2_lentele_is_visu_be_delins
+
+```
+
+Sujungta is visu skirtumai ir delins:
+```{r}
+cbind(r2_lentele_is_visu_skirtumai, r2_lentele_is_visu_be_delins$R2_is_visu_be_delins) %>% 
+  mutate(skirtumas = R2_is_visu_skirtumai - r2_lentele_is_visu_be_delins$R2_is_visu_be_delins)
+```
+
+
+# Kontaktu parinkimas kai lyginama be delins su bedelins ir be h2o
+
+```{r}
+r2_lentele_is_visu_be_delins_be_h2o <- data.frame()
+for(atom_types_parsiuntimui in c("RJ", "JGMLL", "CHARMM19", "ZVCD", "TVG", "VS", "OPLS", "GROMOS53", "MPWACW", "FTA", "ENCAD", "CHARMM22", "AMBER", "RES_MCSC", "RESIDUE", "ROSETTA", "EM", "R", "GTL", "CSNO", "DK", "MF", "SZXLS"
+)) {
+try ({
+print(atom_types_parsiuntimui)
+
+atom_types <- paste0(atom_types_parsiuntimui, "_BAKIUI_pasalinus_110_111_116_119_ir_ins_del_h2o_kont")
+
+r2_be_delins_be_h2o <- readr::read_rds(paste0("/Users/user/Desktop/praktika/r-praktika/rds-failai/r2_is_visu-",atom_types, ".rds")) %>% data.frame() %>% rename( "R2_is_visu_be_delins_be_h2o" = ".")
+
+ grupavimo_tipas <- atom_types %>% data.frame() %>% rename( "Grupavimo_tipas" = ".")
+ 
+ r2_eilute_is_visu_be_delins_be_h2o <- cbind(grupavimo_tipas, round(r2_be_delins_be_h2o, 4))
+
+r2_lentele_is_visu_be_delins_be_h2o <- rbind(r2_lentele_is_visu_be_delins_be_h2o, r2_eilute_is_visu_be_delins_be_h2o)
+
+})
+}
+
+saveRDS(r2_lentele_is_visu_be_delins_be_h2o, file = 
+  paste0("r2-failai/r2-lentele-is_visu_be_delins_be_h2o",atom_types,".rds"))
+
+r2_lentele_is_visu_be_delins_be_h2o
+
+```
+
+
+```{r}
+cbind(r2_lentele_is_visu_be_delins, r2_lentele_is_visu_be_delins_be_h2o$R2_is_visu_be_delins_be_h2o) %>% 
+  mutate(skirtumas = R2_is_visu_be_delins - r2_lentele_is_visu_be_delins_be_h2o$R2_is_visu_be_delins_be_h2o)
+```
+
+#Lyginama be delins ir be retu kontaktu
+```{r}
+r2_lentele_is_visu_be_delins_be_retu_kont <- data.frame()
+for(atom_types_parsiuntimui in c("RJ", "JGMLL", "CHARMM19", "ZVCD", "TVG", "VS", "OPLS", "GROMOS53", "MPWACW", "FTA", "ENCAD", "CHARMM22", "AMBER", "RES_MCSC", "RESIDUE", "ROSETTA", "EM", "R", "GTL", "CSNO", "DK", "MF", "SZXLS"
+)) {
+try ({
+print(atom_types_parsiuntimui)
+
+atom_types <- paste0(atom_types_parsiuntimui, "_BAKIUI_pasalinus_110_111_116_119_ir_ins_del_ir_reti_kont")
+
+r2_be_delins_be_retu_kont <- readr::read_rds(paste0("/Users/user/Desktop/praktika/r-praktika/rds-failai/r2_is_visu-",atom_types, ".rds")) %>% data.frame() %>% rename( "R2_is_visu_be_delins_be_retu_kont" = ".")
+
+ grupavimo_tipas <- atom_types %>% data.frame() %>% rename( "Grupavimo_tipas" = ".")
+ 
+ r2_eilute_is_visu_be_delins_be_retu_kont <- cbind(grupavimo_tipas, round(r2_be_delins_be_retu_kont, 4))
+
+r2_lentele_is_visu_be_delins_be_retu_kont <- rbind(r2_lentele_is_visu_be_delins_be_retu_kont, r2_eilute_is_visu_be_delins_be_retu_kont)
+
+})
+}
+
+saveRDS(r2_lentele_is_visu_be_delins_be_retu_kont, file = 
+  paste0("r2-failai/r2-lentele-is_visu_be_delins_be_retu_kont",atom_types,".rds"))
+
+r2_lentele_is_visu_be_delins_be_retu_kont
+
+```
+
+
+```{r}
+cbind(r2_lentele_is_visu_be_delins, r2_lentele_is_visu_be_delins_be_retu_kont$R2_is_visu_be_delins_be_retu_kont) %>% 
+  mutate(skirtumas = R2_is_visu_be_delins - r2_lentele_is_visu_be_delins_be_retu_kont$R2_is_visu_be_delins_be_retu_kont)
+```
+
+
+
+# loocv
+
+```{r}
+r2_lentele_loocv <- data.frame()
+for(atom_types_parsiuntimui in c("RJ", "JGMLL", "CHARMM19", "ZVCD", "TVG", "VS", "OPLS", "GROMOS53", "MPWACW", "FTA", "ENCAD", "CHARMM22", "AMBER", "RES_MCSC", "RESIDUE", "ROSETTA", "EM", "R", "GTL", "CSNO", "DK", "MF", "SZXLS"
+)) {
+try ({
+print(atom_types_parsiuntimui)
+
+atom_types <- paste0(atom_types_parsiuntimui, "_BAKIUI_pasalinus_110_111_116_119_loocv_be_delins")
+
+r2_loocv <- readr::read_rds(paste0("/Users/user/Desktop/praktika/r-praktika/rds-failai/r2_cv_loo-",atom_types, ".rds")) %>% data.frame() %>% rename( "R2_is_visu_be_delins_be_retu_kont" = ".")
+
+ grupavimo_tipas <- atom_types %>% data.frame() %>% rename( "Grupavimo_tipas" = ".")
+ 
+ r2_eilute_loocv <- cbind(grupavimo_tipas, round(r2_loocv, 4))
+
+r2_lentele_loocv <- rbind(r2_lentele_loocv, r2_eilute_loocv)
+
+})
+}
+
+saveRDS(r2_lentele_loocv, file = 
+  paste0("r2-failai/r2-lentele-loocv",atom_types,".rds"))
+
+r2_lentele_loocv
+
+```
+
+```{r}
+cbind(r2_lentele_is_visu_be_delins, r2_lentele_loocv$R2_is_visu_be_delins_be_retu_kont ) %>% 
+  mutate(skirtumas = R2_is_visu_be_delins - r2_lentele_loocv$R2_is_visu_be_delins_be_retu_kont)
+```

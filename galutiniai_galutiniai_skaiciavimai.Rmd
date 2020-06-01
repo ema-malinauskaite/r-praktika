@@ -31,7 +31,7 @@ set.seed(6)
 
 ## fun_atomu_grupiu_sumoms
 
-
+Be vandens veliau pakeisti abi funkcijas!!!!:
 ```{r}
 fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_lentele, nuline_lentele_atomu) { #pirmas kintamasis - kontaktu failas su pridetais pavadinimais ar1_atom1
   
@@ -40,8 +40,8 @@ fun_atomu_grupiu_sumoms <- function(liz_kont, grupavimo_lentele, nuline_lentele_
   
   kontaktai_atomu_pavadinimai <- liz_kont %>%
   select(V6, V7, V13, V14, V15) %>% 
-#  filter(V13 != "solvent") %>% 
- # filter(V6 != "CYS" & V13 != "CYS") %>% 
+ # filter(V13 != "solvent") %>%  # !!!!!!!!!!!!!!!
+ # filter(V6 != "CYS" & V13 != "CYS") %>%  !!!!!!!!!
   mutate(V7 = recode_factor(V7,"OXT" = "O")) %>% 
   mutate(V14 = recode_factor(V14,"OXT" = "O")) %>% 
   mutate(V6 = recode_factor(V6,"MSE" = "MET")) %>% 
@@ -109,8 +109,8 @@ termo_skirtumai <- data.frame() #desine tiesiniu lygciu sistemos puse matricose
 #Grupavimo lenteles sukurimas (reiklainga kitai funkcijai)
 grupavimo_lentele <- grupavimo_failas %>% 
   mutate_all(na_if,"") %>% 
-  tibble::column_to_rownames(var = "V1") %>% 
-  rbind(solvent = c("solventsolvent"))
+  tibble::column_to_rownames(var = "V1")# %>% !!!!!!!!!!!!!!!!
+  #rbind(solvent = c("solventsolvent"))!!!!!!!!!!!!!!!
 
 #-------
 # Nulines lenteles kurimas (reikalinga kitai funkcijai)
@@ -203,28 +203,21 @@ return(list(visu_baltymu_kont_sumu_skirtumai_atom = as.matrix(visu_baltymu_kont_
 
 ## Duomenu ikelimas
 ```{r}
-
 lizocimai_pagr <- readr::read_rds("./data/pro_344_sm_suppinfo.rds")
 lizocimai_pagr_su_mutacijom <- readr::read_rds("./data/lizocimai_pagr_su_mutacijom.rds")
 
-#po to pakeisti atgal kaip buvo!!!!!
-pdb_tm_wt_mut <- lizocimai_pagr_su_mutacijom %>% 
-  select(pdb, deltaTm, WT, mut_skaicius) %>% 
-  filter(pdb != "2LZM" & pdb != "1L63" & pdb != "219L" ) %>% 
-  .[-(105:121),] %>% 
-  filter(mut_skaicius < 1000) %>%
-  select(-mut_skaicius) %>%
-  filter(deltaTm > -10 & deltaTm < 10)
-  
 # Sukuriama tokia pati pdb_tm_wt_mut lnetele kaip skaiciavimui, tik su visais stulpeliais
 pdb_tm_wt_mut_visi_stulpeliai <- lizocimai_pagr_su_mutacijom %>% 
-  filter(pdb != "2LZM" & pdb != "1L63" & pdb != "219L" ) %>% 
+  filter(pdb != "2LZM" & pdb != "1L63") %>% 
   .[-(105:121),] %>% 
-  filter(mut_skaicius < 1000) %>% 
-  filter(deltaTm > -10 & deltaTm < 10)
+  filter(mut_skaicius < 3) #%>% 
+ # filter(deltaTm < 10 & deltaTm > -10)
 
+pdb_tm_wt_mut <- pdb_tm_wt_mut_visi_stulpeliai %>% 
+   select(pdb, Tm, WT) 
 
 pdb_tm_wt_mut_visi_stulpeliai
+pdb_tm_wt_mut
 ```
 
 ## Skaiciavimai
@@ -240,7 +233,7 @@ atom_types_parsiuntimui <- e
 atom_types <- paste0(e, "_graf_filtr_") # Pavadinimo dalis, kuri nusako koks atomu grupavimo tipas, bei kita info
 
 print(atom_types)
-
+try({
 if(nrow(grupavimo_failas) < 22) {
 #---- 
 # Reiklaingu matricu sukurimas
@@ -363,13 +356,14 @@ cv_loo_grafikas_filtered <- ggplot(apsk_ir_teor_temp_loo_cv %>% filter(apsk_temp
  geom_point(size = 1L) +
  theme_light()
 
-# ggsave(be_cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv.jpeg") ,path = "/Users/user/Desktop")
-# 
-# ggsave(cv_loo_grafikas, device = "jpeg",filename = paste0(atom_types, "_loo_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
-# 
-# ggsave(cv_loo_grafikas_filtered, device = "jpeg",filename = paste0(atom_types, "_loo_cv_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+ggsave(be_cv_grafikas, device = "jpeg",filename = paste0(atom_types, "_be_cv.jpeg") ,path = "/Users/user/Desktop")
+
+ggsave(cv_loo_grafikas, device = "jpeg",filename = paste0(atom_types, "_loo_cv.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
+
+ggsave(cv_loo_grafikas_filtered, device = "jpeg",filename = paste0(atom_types, "_loo_cv_filtered.jpeg") ,path = "/Users/user/Desktop/praktika/r-praktika/grafikai")
 
 }
+})
 }
 be_cv_grafikas
 cv_loo_grafikas
